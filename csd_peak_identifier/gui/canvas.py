@@ -1,6 +1,6 @@
 from collections import deque
 from itertools import product
-from matplotlib.backends.backend_qtagg import FigureCanvasQTAgg as FigureCanvas
+from matplotlib.backends.backend_qtagg import FigureCanvasQTAgg as FigureCanvas, NavigationToolbar2QT as NavigationToolbar
 from matplotlib.figure import Figure
 from matplotlib.ticker import MultipleLocator
 from csd_peak_identifier.gui.constants import (

@@ -5,7 +5,7 @@ from pathlib import Path
 from PySide6.QtWidgets import (
     QMainWindow, QWidget, QVBoxLayout, QHBoxLayout, QLabel, 
     QPushButton, QStatusBar, QListWidget, QListWidgetItem, QStackedWidget,
-    QProgressBar
+    QProgressBar, QGroupBox
 )
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QFont, QColor, QAction
@@ -18,7 +18,7 @@ from csd_peak_identifier.gui.constants import (
     COLOR_IDENTIFIED, COLOR_MAYBE, COLOR_REJECTED, FONT_MONO, COLOR_TEXT,
     COLOR_ACTION, COLOR_MUTED, COLOR_INFO, COLOR_GRID
 )
-from csd_peak_identifier.gui.canvas import MqPlotCanvas
+from csd_peak_identifier.gui.canvas import MqPlotCanvas, NavigationToolbar
 from csd_peak_identifier.gui.open_dialog import CsdOpenDialog
 from csd_peak_identifier.files.client import download_filepair
 
@@ -66,8 +66,11 @@ class CsdPeakIdentifierApp(QMainWindow):
         file_menu.addAction(open_action)
 
         # UI Columns
-        sidebar = QVBoxLayout()
-        main_layout.addLayout(sidebar, 1)
+        # Isotopes GroupBox (Left Sidebar)
+        self.isotope_group = QGroupBox("Isotopes")
+        self.isotope_group.setStyleSheet(f"QGroupBox {{ font-family: {FONT_MONO}; color: {COLOR_TEXT}; font-weight: bold; border: 1px solid {COLOR_GRID}; margin-top: 1.5ex; }} QGroupBox::title {{ subcontrol-origin: margin; left: 10px; padding: 0 3px; }}")
+        sidebar = QVBoxLayout(self.isotope_group)
+        main_layout.addWidget(self.isotope_group, 1)
 
         center_layout = QVBoxLayout()
         
@@ -83,6 +86,10 @@ class CsdPeakIdentifierApp(QMainWindow):
         self.canvas.on_mq_clicked = self.handle_peak_click
         center_layout.addWidget(self.canvas, 1)
 
+        self.toolbar = NavigationToolbar(self.canvas, self)
+        self.toolbar.setStyleSheet(f"background: {COLOR_BG}; border: none; font-family: {FONT_MONO};")
+        center_layout.addWidget(self.toolbar)
+
         self.info_label = QLabel("Select a candidate to see details")
         self.info_label.setStyleSheet(
             f"padding: 2px; font-size: 13px; font-family: {FONT_MONO}; color: {COLOR_TEXT};"
@@ -91,14 +98,16 @@ class CsdPeakIdentifierApp(QMainWindow):
         center_layout.addWidget(self.info_label, 0)
         main_layout.addLayout(center_layout, 4)
 
-        right_panel = QVBoxLayout()
-        main_layout.addLayout(right_panel, 1)
+        self.peak_group = QGroupBox("Peaks")
+        self.peak_group.setStyleSheet(f"QGroupBox {{ font-family: {FONT_MONO}; color: {COLOR_TEXT}; font-weight: bold; border: 1px solid {COLOR_GRID}; margin-top: 1.5ex; }} QGroupBox::title {{ subcontrol-origin: margin; left: 10px; padding: 0 3px; }}")
+        right_panel = QVBoxLayout(self.peak_group)
+        main_layout.addWidget(self.peak_group, 1)
 
         # Elements List
         self.eval_list = QListWidget()
         self.eval_list.setStyleSheet(f"background: {COLOR_PLOT_BG}; font-family: {FONT_MONO}; color: {COLOR_TEXT};")
         sidebar.addWidget(QLabel("Identified Elements"))
-        sidebar.addWidget(self.eval_list, 1)
+        sidebar.addWidget(self.eval_list, 2)
 
         # Candidate List
         self.candidate_list = QListWidget()
@@ -106,7 +115,7 @@ class CsdPeakIdentifierApp(QMainWindow):
         self.candidate_list.itemSelectionChanged.connect(self.handle_candidate_selection)
         self.candidate_header = QLabel("Candidate Elements")
         sidebar.addWidget(self.candidate_header)
-        sidebar.addWidget(self.candidate_list, 2)
+        sidebar.addWidget(self.candidate_list, 1)
 
         # Button Stack
         self.button_stack = QStackedWidget()
@@ -161,7 +170,7 @@ class CsdPeakIdentifierApp(QMainWindow):
         self.peak_list.itemClicked.connect(self.handle_peak_list_click)
         self.peak_list.itemSelectionChanged.connect(self.update_association_view)
         right_panel.addWidget(QLabel("Detected Peaks"))
-        right_panel.addWidget(self.peak_list, 1)
+        right_panel.addWidget(self.peak_list, 2)
 
         # Peak Associations List (Mirror of Sidebar structure)
         self.assoc_list = QListWidget()
@@ -169,10 +178,26 @@ class CsdPeakIdentifierApp(QMainWindow):
         right_panel.addWidget(QLabel("Peak Associations"))
         right_panel.addWidget(self.assoc_list, 1)
 
+        # Right Button Panel (to balance with Isotopes panel)
+        self.right_btn_panel = QWidget()
+        right_btn_layout = QVBoxLayout(self.right_btn_panel)
+        right_btn_layout.setContentsMargins(0, 0, 0, 0)
+        right_btn_layout.setSpacing(0)
+        right_btn_layout.addStretch()
+        
         self.remove_assoc_btn = QPushButton("Remove Association")
         self.remove_assoc_btn.clicked.connect(self.remove_selected_association)
         self.remove_assoc_btn.setStyleSheet(f"font-family: {FONT_MONO};")
-        right_panel.addWidget(self.remove_assoc_btn, 0)
+        right_btn_layout.addWidget(self.remove_assoc_btn)
+        
+        # Add invisible buttons to match the height of the left side (up to 4 buttons in Peak ID mode)
+        for _ in range(3):
+            placeholder = QPushButton(" ")
+            placeholder.setStyleSheet("border: none; background: transparent; color: transparent;")
+            placeholder.setEnabled(False)
+            right_btn_layout.addWidget(placeholder)
+            
+        right_panel.addWidget(self.right_btn_panel)
 
         self.status_bar = QStatusBar()
         self.setStatusBar(self.status_bar)
