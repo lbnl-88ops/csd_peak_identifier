@@ -36,9 +36,10 @@ from ops.ecris.analysis.model.element import Element
 from ops.ecris.analysis.csd.polynomial_fit import polynomial_fit_mq
 
 # --- CONSTANTS ---
-ROOT_PATH = "/home/work/repos/ops/ecris.analysis"
-ISOTOPE_DATA = f"{ROOT_PATH}/data/IsotopeData.txt"
-DEFAULT_CSD = f"{ROOT_PATH}/data/csds/csd_1762894074"
+CURRENT_DIR = Path(__file__).parent
+DATA_PATH = CURRENT_DIR.parent / "data"
+ISOTOPE_DATA = DATA_PATH / "IsotopeData.txt"
+DEFAULT_CSD = DATA_PATH / "csds" / "csd_1762894074"
 
 # Colorblind-friendly Professional palette (Okabe-Ito)
 COLOR_BG = "#f4f1ea"
@@ -434,9 +435,13 @@ class CsdPeakIdentifierApp(QMainWindow):
             self.update_view()
 
 
-if __name__ == "__main__":
+def main():
     app = QApplication(sys.argv)
     app.setStyle("Fusion")
     window = CsdPeakIdentifierApp(DEFAULT_CSD)
     window.show()
     sys.exit(app.exec())
+
+
+if __name__ == "__main__":
+    main()

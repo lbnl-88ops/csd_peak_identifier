@@ -3,7 +3,7 @@ name = "csd-peak-identifier"
 version = "0.1.0"
 description = "A PySide6 GUI for identifying isotopes in ECR ion beam spectra."
 authors = ["Jessica Rehak <rehak@lbl.gov>"]
-packages = [{include = "csd_peak_identifier", from = "src"}]
+packages = [{include = "csd_peak_identifier"}]
 
 [tool.poetry.dependencies]
 python = ">=3.11, <3.15"
