@@ -8,11 +8,13 @@ from PySide6.QtWidgets import (
     QPushButton, QStatusBar, QListWidget, QListWidgetItem, QStackedWidget
 )
 from PySide6.QtCore import Qt
-from PySide6.QtGui import QFont
+from PySide6.QtGui import QFont, QColor
 
 from csd_peak_identifier.logic import ElementEvaluation, create_evaluation, lookup_isotopes
 from csd_peak_identifier.gui.constants import (
-    COLOR_BG, COLOR_PLOT_BG, COLOR_TARGET, ISOTOPE_DATA
+    COLOR_BG, COLOR_PLOT_BG, COLOR_TARGET, ISOTOPE_DATA,
+    COLOR_IDENTIFIED, COLOR_MAYBE, COLOR_REJECTED, FONT_MONO, COLOR_TEXT,
+    COLOR_ACTION, COLOR_MUTED, COLOR_INFO, COLOR_GRID
 )
 from csd_peak_identifier.gui.canvas import MqPlotCanvas
 
@@ -39,6 +41,23 @@ class CsdPeakIdentifierApp(QMainWindow):
         self.candidates = []
 
         self.setStyleSheet(f"background: {COLOR_BG};")
+        self.setStyleSheet(f"""
+            QMainWindow {{ background: {COLOR_BG}; }}
+            QListWidget {{ 
+                background: {COLOR_PLOT_BG}; 
+                font-family: {FONT_MONO}; 
+                color: {COLOR_TEXT};
+                border: 1px solid {COLOR_GRID};
+            }}
+            QListWidget::item:selected {{ 
+                background: palette(highlight); 
+                color: palette(highlightedText); 
+            }}
+            QPushButton {{
+                font-family: {FONT_MONO};
+                padding: 4px;
+            }}
+        """)
         main_layout = QHBoxLayout(QWidget(self))
         self.setCentralWidget(main_layout.parent())
 
@@ -51,7 +70,7 @@ class CsdPeakIdentifierApp(QMainWindow):
         # Mode Indicator
         self.mode_label = QLabel("MODE: PEAK SELECTION")
         self.mode_label.setStyleSheet(
-            f"background: #2f3640; color: white; padding: 4px; font-weight: bold; border-radius: 4px;"
+            f"background: {COLOR_MUTED}; color: white; padding: 4px; font-weight: bold; border-radius: 4px; font-family: {FONT_MONO};"
         )
         self.mode_label.setAlignment(Qt.AlignCenter)
         center_layout.addWidget(self.mode_label)
@@ -62,7 +81,7 @@ class CsdPeakIdentifierApp(QMainWindow):
 
         self.info_label = QLabel("Select a candidate to see details")
         self.info_label.setStyleSheet(
-            f"padding: 2px; font-size: 13px;"
+            f"padding: 2px; font-size: 13px; font-family: {FONT_MONO}; color: {COLOR_TEXT};"
         )
         self.info_label.setAlignment(Qt.AlignCenter)
         center_layout.addWidget(self.info_label, 0)
@@ -73,13 +92,13 @@ class CsdPeakIdentifierApp(QMainWindow):
 
         # Elements List
         self.eval_list = QListWidget()
-        self.eval_list.setStyleSheet(f"background: {COLOR_PLOT_BG}")
+        self.eval_list.setStyleSheet(f"background: {COLOR_PLOT_BG}; font-family: {FONT_MONO}; color: {COLOR_TEXT};")
         sidebar.addWidget(QLabel("Identified Elements"))
         sidebar.addWidget(self.eval_list, 1)
 
         # Candidate List
         self.candidate_list = QListWidget()
-        self.candidate_list.setStyleSheet(f"background: {COLOR_PLOT_BG}")
+        self.candidate_list.setStyleSheet(f"background: {COLOR_PLOT_BG}; font-family: {FONT_MONO}; color: {COLOR_TEXT};")
         self.candidate_list.itemSelectionChanged.connect(self.handle_candidate_selection)
         self.candidate_header = QLabel("Candidate Elements")
         sidebar.addWidget(self.candidate_header)
@@ -108,7 +127,7 @@ class CsdPeakIdentifierApp(QMainWindow):
         ]:
             btn = QPushButton(txt)
             btn.clicked.connect(func)
-            btn.setStyleSheet(style)
+            btn.setStyleSheet(style + f"font-family: {FONT_MONO};")
             main_btn_layout.addWidget(btn)
 
         # ID Buttons Panel
@@ -120,21 +139,21 @@ class CsdPeakIdentifierApp(QMainWindow):
         self.button_stack.addWidget(self.id_btn_panel)
 
         for txt, func, style in [
-            ("Accept Candidate", self.accept_candidate, "font-weight: bold;"),
+            ("Accept Candidate (Enter)", self.accept_candidate, f"background: {COLOR_ACTION}; color: white; font-weight: bold;"),
             ("Mark as Maybe", self.mark_as_maybe, ""),
             ("Reject Candidate", self.reject_candidate, ""),
-            ("Exit Peak ID", self.exit_identification, ""),
+            ("Exit Peak ID (Esc)", self.exit_identification, ""),
         ]:
             btn = QPushButton(txt)
             btn.clicked.connect(func)
-            btn.setStyleSheet(style)
+            btn.setStyleSheet(style + f"font-family: {FONT_MONO};")
             id_btn_layout.addWidget(btn)
 
         self.button_stack.setCurrentIndex(0)
 
         # Peaks List
         self.peak_list = QListWidget()
-        self.peak_list.setStyleSheet(f"background: {COLOR_PLOT_BG}")
+        self.peak_list.setStyleSheet(f"background: {COLOR_PLOT_BG}; font-family: {FONT_MONO}; color: {COLOR_TEXT};")
         self.peak_list.itemClicked.connect(self.handle_peak_list_click)
         right_panel.addWidget(QLabel("Detected Peaks"))
         right_panel.addWidget(self.peak_list)
@@ -176,7 +195,7 @@ class CsdPeakIdentifierApp(QMainWindow):
         if candidate:
             score = candidate.score(self.csd.m_over_q.max())
             self.info_label.setText(
-                f"<b>Candidate:</b> {candidate.symbol()} | "
+                f"<b style='color:{COLOR_INFO}'>Candidate:</b> {candidate.symbol()} | "
                 f"<b>Mass:</b> {candidate.m} | "
                 f"<b>Z:</b> {candidate.z} | "
                 f"<b>Abundance:</b> {candidate.a:.2f}% | "
@@ -190,14 +209,16 @@ class CsdPeakIdentifierApp(QMainWindow):
             self.eval_list.blockSignals(True)
             self.eval_list.clear()
             for ev in self.identified:
-                self.eval_list.addItem(
+                item = QListWidgetItem(
                     f"{ev.symbol()} ({ev.score(self.csd.m_over_q.max()):.2f})"
                 )
+                item.setForeground(QColor(COLOR_IDENTIFIED))
+                self.eval_list.addItem(item)
             for ev in self.maybe:
                 item = QListWidgetItem(
                     f"{ev.symbol()} (maybe) ({ev.score(self.csd.m_over_q.max()):.2f})"
                 )
-                item.setForeground(Qt.darkBlue)
+                item.setForeground(QColor(COLOR_MAYBE))
                 self.eval_list.addItem(item)
             self.eval_list.blockSignals(False)
         self.update_peak_list()
@@ -221,7 +242,7 @@ class CsdPeakIdentifierApp(QMainWindow):
             item = QListWidgetItem(txt)
             item.setData(Qt.UserRole, mq)
             if elems:
-                item.setForeground(Qt.gray)
+                item.setForeground(QColor(COLOR_REJECTED))
             self.peak_list.addItem(item)
             if self.targeted_mq and abs(mq - self.targeted_mq) < 0.001:
                 target_item = item
@@ -254,7 +275,7 @@ class CsdPeakIdentifierApp(QMainWindow):
                 font = item.font()
                 font.setStrikeOut(True)
                 item.setFont(font)
-                item.setForeground(Qt.gray)
+                item.setForeground(QColor(COLOR_REJECTED))
             self.candidate_list.addItem(item)
         if self.candidates:
             self.candidate_list.setCurrentRow(0)
@@ -262,18 +283,14 @@ class CsdPeakIdentifierApp(QMainWindow):
 
     def keyPressEvent(self, event):
         if self.button_stack.currentIndex() == 1: # ID Mode
-            if event.key() == Qt.Key_A:
+            if event.key() in (Qt.Key_Return, Qt.Key_Enter):
                 self.accept_candidate()
-                return
-            elif event.key() == Qt.Key_M:
-                self.mark_as_maybe()
-                return
-            elif event.key() == Qt.Key_N:
-                self.reject_candidate()
-                return
+                return True
             elif event.key() == Qt.Key_Escape:
                 self.exit_identification()
-                return
+                return True
+            # Let the list handle arrows and other keys
+            return super().keyPressEvent(event)
 
         if event.key() in (Qt.Key_Return, Qt.Key_Enter):
             self.start_identification()
@@ -320,7 +337,7 @@ class CsdPeakIdentifierApp(QMainWindow):
         self.button_stack.setCurrentIndex(1) # ID Mode
         self.mode_label.setText("MODE: PEAK IDENTIFICATION")
         self.mode_label.setStyleSheet(
-            f"background: {COLOR_TARGET}; color: white; padding: 4px; font-weight: bold; border-radius: 4px;"
+            f"background: {COLOR_TARGET}; color: white; padding: 4px; font-weight: bold; border-radius: 4px; font-family: {FONT_MONO};"
         )
         self.candidate_header.setText("Candidate Elements (Sorted by Score)")
         self.eval_list.setEnabled(False)
@@ -333,7 +350,7 @@ class CsdPeakIdentifierApp(QMainWindow):
         self.button_stack.setCurrentIndex(0) # Main Mode
         self.mode_label.setText("MODE: PEAK SELECTION")
         self.mode_label.setStyleSheet(
-            f"background: #2f3640; color: white; padding: 4px; font-weight: bold; border-radius: 4px;"
+            f"background: {COLOR_MUTED}; color: white; padding: 4px; font-weight: bold; border-radius: 4px; font-family: {FONT_MONO};"
         )
         self.candidate_header.setText("Candidate Elements")
         self.eval_list.setEnabled(True)
@@ -345,11 +362,12 @@ class CsdPeakIdentifierApp(QMainWindow):
         row = self.candidate_list.currentRow()
         if 0 <= row < len(self.candidates):
             selected = self.candidates[row]
-            # remove from maybe if it was there
+            # remove from maybe if it was there (checking by symbol)
             self.maybe = [m for m in self.maybe if m.symbol() != selected.symbol()]
             if not any(i.symbol() == selected.symbol() for i in self.identified):
                 self.identified.append(selected)
             self.exit_identification()
+            self.update_view(rebuild=True)
 
     def mark_as_maybe(self):
         row = self.candidate_list.currentRow()

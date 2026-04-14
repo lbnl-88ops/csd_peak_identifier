@@ -5,7 +5,7 @@ from matplotlib.figure import Figure
 from matplotlib.ticker import MultipleLocator
 from csd_peak_identifier.gui.constants import (
     COLOR_BG, COLOR_PLOT_BG, COLOR_TARGET, COLOR_CANDIDATE, 
-    COLOR_IDENTIFIED_OUTLINE, MARKERS, SHADES, COLOR_GRID
+    COLOR_TEXT, MARKERS, SHADES, COLOR_GRID
 )
 
 class MqPlotCanvas(FigureCanvas):
@@ -115,7 +115,7 @@ class MqPlotCanvas(FigureCanvas):
                 cur_off,
                 m,
                 mfc=c,
-                mec=COLOR_IDENTIFIED_OUTLINE,
+                mec=COLOR_TEXT,
                 label=ev.symbol(),
             )
             if candidate and len(ev.missing_m_over_q) > 0:
