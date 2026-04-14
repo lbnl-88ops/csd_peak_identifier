@@ -11,7 +11,9 @@ DEFAULT_CSD = DATA_PATH / "csds" / "csd_1762894074"
 # Retro Cassette Futurism Palette
 # Focused on utility, high contrast, and functional status indicators.
 
-# --- Palette Mapping ---
+# --- Network / Server ---
+API_URL = "http://ecris.lbl.gov:5000"
+TEMP_FOLDER = Path("./tmp/")
 # These follow a "Functional Action" philosophy for high-pressure technical environments.
 
 COLOR_BG = "#f4f1ea"            # Primary enclosure/chassis

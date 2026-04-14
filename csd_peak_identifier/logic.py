@@ -2,6 +2,12 @@ import numpy as np
 import pandas as pd
 from typing import Any, List, Set, cast, Dict, Optional
 from dataclasses import dataclass, field
+from pathlib import Path
+from scipy.signal import find_peaks
+
+from ops.ecris.analysis.io.read_csd_file import read_csd_from_file_pair
+from ops.ecris.analysis.model.element import Element
+from ops.ecris.analysis.csd.polynomial_fit import polynomial_fit_mq
 
 
 @dataclass
@@ -26,6 +32,17 @@ class ElementEvaluation:
         if expected_count == 0:
             return 0.0
         return len(self.peak_indices) / expected_count
+
+
+def load_and_calibrate_csd(csd_path: Path) -> Any:
+    """Load a CSD file pair and perform initial oxygen calibration."""
+    csd = read_csd_from_file_pair(csd_path)
+    # Default initial calibration using Oxygen-16 (Z=8, q=4 is common)
+    csd.m_over_q, _ = polynomial_fit_mq(
+        csd, [Element("O", "Oxygen", 16, 8)], 4
+    )
+    peaks, _ = find_peaks(csd.beam_current, height=0.2, prominence=0.2)
+    return csd, peaks
 
 
 def find_element_peaks(

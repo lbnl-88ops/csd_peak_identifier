@@ -1,26 +1,26 @@
 import numpy as np
 import pandas as pd
 from pathlib import Path
-from scipy.signal import find_peaks
 
 from PySide6.QtWidgets import (
     QMainWindow, QWidget, QVBoxLayout, QHBoxLayout, QLabel, 
-    QPushButton, QStatusBar, QListWidget, QListWidgetItem, QStackedWidget
+    QPushButton, QStatusBar, QListWidget, QListWidgetItem, QStackedWidget,
+    QProgressBar
 )
 from PySide6.QtCore import Qt
-from PySide6.QtGui import QFont, QColor
+from PySide6.QtGui import QFont, QColor, QAction
 
-from csd_peak_identifier.logic import ElementEvaluation, create_evaluation, lookup_isotopes
+from csd_peak_identifier.logic import (
+    ElementEvaluation, create_evaluation, lookup_isotopes, load_and_calibrate_csd
+)
 from csd_peak_identifier.gui.constants import (
     COLOR_BG, COLOR_PLOT_BG, COLOR_TARGET, ISOTOPE_DATA,
     COLOR_IDENTIFIED, COLOR_MAYBE, COLOR_REJECTED, FONT_MONO, COLOR_TEXT,
     COLOR_ACTION, COLOR_MUTED, COLOR_INFO, COLOR_GRID
 )
 from csd_peak_identifier.gui.canvas import MqPlotCanvas
-
-from ops.ecris.analysis.io.read_csd_file import read_csd_from_file_pair
-from ops.ecris.analysis.model.element import Element
-from ops.ecris.analysis.csd.polynomial_fit import polynomial_fit_mq
+from csd_peak_identifier.gui.open_dialog import CsdOpenDialog
+from csd_peak_identifier.files.client import download_filepair
 
 class CsdPeakIdentifierApp(QMainWindow):
     def __init__(self, csd_path):
@@ -30,11 +30,7 @@ class CsdPeakIdentifierApp(QMainWindow):
         self.isotopes = pd.read_csv(
             ISOTOPE_DATA, delimiter="\\s+", names=["s", "z", "a", "m"]
         )
-        self.csd = read_csd_from_file_pair(Path(csd_path))
-        self.csd.m_over_q, _ = polynomial_fit_mq(
-            self.csd, [Element("O", "Oxygen", 16, 8)], 4
-        )
-        self.peaks, _ = find_peaks(self.csd.beam_current, height=0.2, prominence=0.2)
+        self.csd, self.peaks = load_and_calibrate_csd(Path(csd_path))
         self.identified, self.targeted_mq = [], None
         self.maybe = []
         self.rejected_symbols = set()
@@ -60,6 +56,14 @@ class CsdPeakIdentifierApp(QMainWindow):
         """)
         main_layout = QHBoxLayout(QWidget(self))
         self.setCentralWidget(main_layout.parent())
+
+        # Menu Bar
+        self.menu_bar = self.menuBar()
+        file_menu = self.menu_bar.addMenu("&File")
+        open_action = QAction("&Open...", self)
+        open_action.setShortcut("Ctrl+O")
+        open_action.triggered.connect(self.open_csd_dialog)
+        file_menu.addAction(open_action)
 
         # UI Columns
         sidebar = QVBoxLayout()
@@ -172,6 +176,7 @@ class CsdPeakIdentifierApp(QMainWindow):
 
         self.status_bar = QStatusBar()
         self.setStatusBar(self.status_bar)
+        
         self.setup_persistent()
         self.update_view()
 
@@ -507,3 +512,33 @@ class CsdPeakIdentifierApp(QMainWindow):
                 break
                 
         self.update_view(rebuild=True)
+
+    def open_csd_dialog(self):
+        dialog = CsdOpenDialog(self)
+        # Use dialog.exec() or dialog.exec_()
+        from PySide6.QtWidgets import QDialog
+        if dialog.exec() == QDialog.Accepted:
+            filename = dialog.get_selected_file()
+            if filename:
+                self.download_and_open(filename)
+
+    def download_and_open(self, csd_filename):
+        self.status_bar.showMessage(f"Downloading {csd_filename} and its pair...")
+        try:
+            new_csd_path = download_filepair(csd_filename)
+            if not new_csd_path:
+                self.status_bar.showMessage(f"Failed to download {csd_filename}", 5000)
+                return
+
+            # Now load it
+            self.status_bar.showMessage(f"Loading and calibrating {csd_filename}...")
+            self.csd, self.peaks = load_and_calibrate_csd(new_csd_path)
+            
+            # Reset identification state for the new file
+            self.clear_all()
+            self.setup_persistent()
+            self.update_view(rebuild=True)
+            self.status_bar.showMessage(f"Successfully loaded {csd_filename}", 3000)
+            
+        except Exception as e:
+            self.status_bar.showMessage(f"Error loading file: {str(e)}", 5000)
