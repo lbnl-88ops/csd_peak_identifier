@@ -36,7 +36,7 @@ from ops.ecris.analysis.model.element import Element
 from ops.ecris.analysis.csd.polynomial_fit import polynomial_fit_mq
 
 # --- CONSTANTS ---
-ROOT_PATH = "/home/rehak/repos/ops/ecris.analysis"
+ROOT_PATH = "/home/work/repos/ops/ecris.analysis"
 ISOTOPE_DATA = f"{ROOT_PATH}/data/IsotopeData.txt"
 DEFAULT_CSD = f"{ROOT_PATH}/data/csds/csd_1762894074"
 
