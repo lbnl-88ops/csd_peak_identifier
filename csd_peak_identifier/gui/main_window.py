@@ -155,8 +155,20 @@ class CsdPeakIdentifierApp(QMainWindow):
         self.peak_list = QListWidget()
         self.peak_list.setStyleSheet(f"background: {COLOR_PLOT_BG}; font-family: {FONT_MONO}; color: {COLOR_TEXT};")
         self.peak_list.itemClicked.connect(self.handle_peak_list_click)
+        self.peak_list.itemSelectionChanged.connect(self.update_association_view)
         right_panel.addWidget(QLabel("Detected Peaks"))
-        right_panel.addWidget(self.peak_list)
+        right_panel.addWidget(self.peak_list, 1)
+
+        # Peak Associations List (Mirror of Sidebar structure)
+        self.assoc_list = QListWidget()
+        self.assoc_list.setStyleSheet(f"background: {COLOR_PLOT_BG}; font-family: {FONT_MONO}; color: {COLOR_TEXT};")
+        right_panel.addWidget(QLabel("Peak Associations"))
+        right_panel.addWidget(self.assoc_list, 1)
+
+        self.remove_assoc_btn = QPushButton("Remove Association")
+        self.remove_assoc_btn.clicked.connect(self.remove_selected_association)
+        self.remove_assoc_btn.setStyleSheet(f"font-family: {FONT_MONO};")
+        right_panel.addWidget(self.remove_assoc_btn, 0)
 
         self.status_bar = QStatusBar()
         self.setStatusBar(self.status_bar)
@@ -222,9 +234,13 @@ class CsdPeakIdentifierApp(QMainWindow):
                 self.eval_list.addItem(item)
             self.eval_list.blockSignals(False)
         self.update_peak_list()
+        self.update_association_view()
 
     def update_peak_list(self):
         self.peak_list.blockSignals(True)
+        # Store current selection to restore it after clear if no new target
+        current_mq = self.peak_list.currentItem().data(Qt.UserRole) if self.peak_list.currentItem() else None
+        
         self.peak_list.clear()
         combined_identified = self.identified + self.maybe
         pk_map = {
@@ -244,12 +260,20 @@ class CsdPeakIdentifierApp(QMainWindow):
             if elems:
                 item.setForeground(QColor(COLOR_REJECTED))
             self.peak_list.addItem(item)
-            if self.targeted_mq and abs(mq - self.targeted_mq) < 0.001:
+            
+            # Prioritize the targeted_mq for selection and scrolling
+            if self.targeted_mq and abs(mq - self.targeted_mq) < 0.0001:
                 target_item = item
+            elif not target_item and current_mq is not None and abs(mq - current_mq) < 0.0001:
+                target_item = item
+
         if target_item:
             self.peak_list.setCurrentItem(target_item)
+            # Scroll to the selected item to ensure visibility
             self.peak_list.scrollToItem(target_item)
+        
         self.peak_list.blockSignals(False)
+
 
     def handle_peak_click(self, x, y):
         self.targeted_mq = float(
@@ -261,6 +285,7 @@ class CsdPeakIdentifierApp(QMainWindow):
 
     def handle_peak_list_click(self, item):
         self.targeted_mq = item.data(Qt.UserRole)
+        # update_view will call update_peak_list and update_association_view
         self.update_view()
 
     def handle_candidate_selection(self):
@@ -289,11 +314,21 @@ class CsdPeakIdentifierApp(QMainWindow):
             elif event.key() == Qt.Key_Escape:
                 self.exit_identification()
                 return True
-            # Let the list handle arrows and other keys
             return super().keyPressEvent(event)
 
         if event.key() in (Qt.Key_Return, Qt.Key_Enter):
             self.start_identification()
+        elif event.key() in (Qt.Key_Left, Qt.Key_Right):
+            mqs = sorted([float(self.csd.m_over_q[p]) for p in self.peaks])
+            idx = (
+                np.argmin(np.abs(np.array(mqs) - self.targeted_mq))
+                if self.targeted_mq is not None
+                else 0
+            )
+            self.targeted_mq = mqs[
+                (idx + (1 if event.key() == Qt.Key_Right else -1)) % len(mqs)
+            ]
+            self.update_view()
         elif event.key() in (Qt.Key_Left, Qt.Key_Right):
             mqs = sorted([float(self.csd.m_over_q[p]) for p in self.peaks])
             idx = (
@@ -409,3 +444,66 @@ class CsdPeakIdentifierApp(QMainWindow):
             else:
                 del self.maybe[row - len(self.identified)]
             self.update_view()
+
+    def update_association_view(self):
+        self.assoc_list.blockSignals(True)
+        self.assoc_list.clear()
+        
+        current_peak_item = self.peak_list.currentItem()
+        if not current_peak_item:
+            self.assoc_list.blockSignals(False)
+            return
+
+        mq_val = current_peak_item.data(Qt.UserRole)
+        # Find the peak index corresponding to this mq
+        p_idx = self.peaks[np.argmin(np.abs(self.csd.m_over_q[self.peaks] - mq_val))]
+        
+        combined = [(ev, "identified") for ev in self.identified] + \
+                   [(ev, "maybe") for ev in self.maybe]
+        
+        for ev, category in combined:
+            if p_idx in ev.peak_indices:
+                txt = f"{ev.symbol()} ({category})"
+                item = QListWidgetItem(txt)
+                item.setData(Qt.UserRole, (ev.symbol(), category))
+                if category == "identified":
+                    item.setForeground(QColor(COLOR_IDENTIFIED))
+                else:
+                    item.setForeground(QColor(COLOR_MAYBE))
+                self.assoc_list.addItem(item)
+        
+        self.assoc_list.blockSignals(False)
+
+    def remove_selected_association(self):
+        item = self.assoc_list.currentItem()
+        if not item:
+            return
+            
+        symbol, category = item.data(Qt.UserRole)
+        
+        # Get current peak index from peak_list
+        peak_item = self.peak_list.currentItem()
+        if not peak_item:
+            return
+        mq_val = peak_item.data(Qt.UserRole)
+        p_idx = self.peaks[np.argmin(np.abs(self.csd.m_over_q[self.peaks] - mq_val))]
+
+        # Find the evaluation and remove the peak index
+        target_list = self.identified if category == "identified" else self.maybe
+        for ev in target_list:
+            if ev.symbol() == symbol:
+                # Remove p_idx from ev.peak_indices, current, and m_over_q
+                mask = ev.peak_indices != p_idx
+                ev.peak_indices = ev.peak_indices[mask]
+                ev.current = ev.current[mask]
+                ev.m_over_q = ev.m_over_q[mask]
+                
+                # If no peaks left, remove the evaluation entirely
+                if len(ev.peak_indices) == 0:
+                    if category == "identified":
+                        self.identified = [i for i in self.identified if i.symbol() != symbol]
+                    else:
+                        self.maybe = [m for m in self.maybe if m.symbol() != symbol]
+                break
+                
+        self.update_view(rebuild=True)
