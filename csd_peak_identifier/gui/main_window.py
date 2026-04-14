@@ -47,6 +47,15 @@ class CsdPeakIdentifierApp(QMainWindow):
         main_layout.addLayout(sidebar, 1)
 
         center_layout = QVBoxLayout()
+        
+        # Mode Indicator
+        self.mode_label = QLabel("MODE: PEAK SELECTION")
+        self.mode_label.setStyleSheet(
+            f"background: #2f3640; color: white; padding: 4px; font-weight: bold; border-radius: 4px;"
+        )
+        self.mode_label.setAlignment(Qt.AlignCenter)
+        center_layout.addWidget(self.mode_label)
+
         self.canvas = MqPlotCanvas(self)
         self.canvas.on_mq_clicked = self.handle_peak_click
         center_layout.addWidget(self.canvas, 1)
@@ -72,7 +81,8 @@ class CsdPeakIdentifierApp(QMainWindow):
         self.candidate_list = QListWidget()
         self.candidate_list.setStyleSheet(f"background: {COLOR_PLOT_BG}")
         self.candidate_list.itemSelectionChanged.connect(self.handle_candidate_selection)
-        sidebar.addWidget(QLabel("Candidate Elements"))
+        self.candidate_header = QLabel("Candidate Elements")
+        sidebar.addWidget(self.candidate_header)
         sidebar.addWidget(self.candidate_list, 2)
 
         # Button Stack
@@ -239,9 +249,7 @@ class CsdPeakIdentifierApp(QMainWindow):
         self.candidate_list.blockSignals(True)
         self.candidate_list.clear()
         for c in self.candidates:
-            item = QListWidgetItem(
-                f"{c.symbol()} (S: {c.score(self.targeted_mq * 2):.2f}, A: {c.a:.1f})"
-            )
+            item = QListWidgetItem(c.symbol())
             if c.symbol() in self.rejected_symbols:
                 font = item.font()
                 font.setStrikeOut(True)
@@ -253,6 +261,20 @@ class CsdPeakIdentifierApp(QMainWindow):
         self.candidate_list.blockSignals(False)
 
     def keyPressEvent(self, event):
+        if self.button_stack.currentIndex() == 1: # ID Mode
+            if event.key() == Qt.Key_A:
+                self.accept_candidate()
+                return
+            elif event.key() == Qt.Key_M:
+                self.mark_as_maybe()
+                return
+            elif event.key() == Qt.Key_N:
+                self.reject_candidate()
+                return
+            elif event.key() == Qt.Key_Escape:
+                self.exit_identification()
+                return
+
         if event.key() in (Qt.Key_Return, Qt.Key_Enter):
             self.start_identification()
         elif event.key() in (Qt.Key_Left, Qt.Key_Right):
@@ -296,6 +318,26 @@ class CsdPeakIdentifierApp(QMainWindow):
             key=lambda c: (c.score(self.csd.m_over_q.max()), c.a), reverse=True
         )
         self.button_stack.setCurrentIndex(1) # ID Mode
+        self.mode_label.setText("MODE: PEAK IDENTIFICATION")
+        self.mode_label.setStyleSheet(
+            f"background: {COLOR_TARGET}; color: white; padding: 4px; font-weight: bold; border-radius: 4px;"
+        )
+        self.candidate_header.setText("Candidate Elements (Sorted by Score)")
+        self.eval_list.setEnabled(False)
+        self.peak_list.setEnabled(False)
+        self.update_candidate_list()
+        self.update_view()
+
+    def exit_identification(self):
+        self.candidates = []
+        self.button_stack.setCurrentIndex(0) # Main Mode
+        self.mode_label.setText("MODE: PEAK SELECTION")
+        self.mode_label.setStyleSheet(
+            f"background: #2f3640; color: white; padding: 4px; font-weight: bold; border-radius: 4px;"
+        )
+        self.candidate_header.setText("Candidate Elements")
+        self.eval_list.setEnabled(True)
+        self.peak_list.setEnabled(True)
         self.update_candidate_list()
         self.update_view()
 
@@ -317,6 +359,9 @@ class CsdPeakIdentifierApp(QMainWindow):
                not any(i.symbol() == selected.symbol() for i in self.identified):
                 self.maybe.append(selected)
                 self.update_view(rebuild=True)
+            # auto-advance
+            if row + 1 < self.candidate_list.count():
+                self.candidate_list.setCurrentRow(row + 1)
 
     def reject_candidate(self):
         row = self.candidate_list.currentRow()
@@ -328,12 +373,9 @@ class CsdPeakIdentifierApp(QMainWindow):
             self.maybe = [m for m in self.maybe if m.symbol() != selected.symbol()]
             self.update_candidate_list()
             self.update_view(rebuild=True)
-
-    def exit_identification(self):
-        self.candidates = []
-        self.button_stack.setCurrentIndex(0) # Main Mode
-        self.update_candidate_list()
-        self.update_view()
+            # auto-advance
+            if row + 1 < self.candidate_list.count():
+                self.candidate_list.setCurrentRow(row + 1)
 
     def clear_all(self):
         self.identified, self.maybe, self.candidates = [], [], []
