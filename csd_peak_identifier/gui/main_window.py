@@ -5,16 +5,16 @@ from scipy.signal import find_peaks
 
 from PySide6.QtWidgets import (
     QMainWindow, QWidget, QVBoxLayout, QHBoxLayout, QLabel, 
-    QPushButton, QStatusBar, QListWidget, QListWidgetItem
+    QPushButton, QStatusBar, QListWidget, QListWidgetItem, QStackedWidget
 )
 from PySide6.QtCore import Qt
+from PySide6.QtGui import QFont
 
 from csd_peak_identifier.logic import ElementEvaluation, create_evaluation, lookup_isotopes
 from csd_peak_identifier.gui.constants import (
     COLOR_BG, COLOR_PLOT_BG, COLOR_TARGET, ISOTOPE_DATA
 )
 from csd_peak_identifier.gui.canvas import MqPlotCanvas
-from csd_peak_identifier.gui.dialogs import CandidateSelectionDialog
 
 from ops.ecris.analysis.io.read_csd_file import read_csd_from_file_pair
 from ops.ecris.analysis.model.element import Element
@@ -33,7 +33,10 @@ class CsdPeakIdentifierApp(QMainWindow):
             self.csd, [Element("O", "Oxygen", 16, 8)], 4
         )
         self.peaks, _ = find_peaks(self.csd.beam_current, height=0.2, prominence=0.2)
-        self.identified, self.maybe, self.targeted_mq = [], [], None
+        self.identified, self.targeted_mq = [], None
+        self.maybe = []
+        self.rejected_symbols = set()
+        self.candidates = []
 
         self.setStyleSheet(f"background: {COLOR_BG};")
         main_layout = QHBoxLayout(QWidget(self))
@@ -42,9 +45,20 @@ class CsdPeakIdentifierApp(QMainWindow):
         # UI Columns
         sidebar = QVBoxLayout()
         main_layout.addLayout(sidebar, 1)
+
+        center_layout = QVBoxLayout()
         self.canvas = MqPlotCanvas(self)
         self.canvas.on_mq_clicked = self.handle_peak_click
-        main_layout.addWidget(self.canvas, 4)
+        center_layout.addWidget(self.canvas, 1)
+
+        self.info_label = QLabel("Select a candidate to see details")
+        self.info_label.setStyleSheet(
+            f"padding: 2px; font-size: 13px;"
+        )
+        self.info_label.setAlignment(Qt.AlignCenter)
+        center_layout.addWidget(self.info_label, 0)
+        main_layout.addLayout(center_layout, 4)
+
         right_panel = QVBoxLayout()
         main_layout.addLayout(right_panel, 1)
 
@@ -52,20 +66,61 @@ class CsdPeakIdentifierApp(QMainWindow):
         self.eval_list = QListWidget()
         self.eval_list.setStyleSheet(f"background: {COLOR_PLOT_BG}")
         sidebar.addWidget(QLabel("Identified Elements"))
-        sidebar.addWidget(self.eval_list)
+        sidebar.addWidget(self.eval_list, 1)
+
+        # Candidate List
+        self.candidate_list = QListWidget()
+        self.candidate_list.setStyleSheet(f"background: {COLOR_PLOT_BG}")
+        self.candidate_list.itemSelectionChanged.connect(self.handle_candidate_selection)
+        sidebar.addWidget(QLabel("Candidate Elements"))
+        sidebar.addWidget(self.candidate_list, 2)
+
+        # Button Stack
+        self.button_stack = QStackedWidget()
+        sidebar.addWidget(self.button_stack)
+
+        # Main Buttons Panel
+        self.main_btn_panel = QWidget()
+        main_btn_layout = QVBoxLayout(self.main_btn_panel)
+        main_btn_layout.setContentsMargins(0, 0, 0, 0)
+        main_btn_layout.setSpacing(0)
+        main_btn_layout.addStretch()
+        self.button_stack.addWidget(self.main_btn_panel)
+
         for txt, func, style in [
             (
-                "Identify Peak (Enter)",
+                "Search Candidates (Enter)",
                 self.start_identification,
                 f"background: {COLOR_TARGET}; color: white; font-weight: bold;",
             ),
-            ("Remove Selected", self.remove_selected, ""),
+            ("Remove Identified", self.remove_selected, ""),
             ("Clear All", self.clear_all, ""),
         ]:
             btn = QPushButton(txt)
             btn.clicked.connect(func)
             btn.setStyleSheet(style)
-            sidebar.addWidget(btn)
+            main_btn_layout.addWidget(btn)
+
+        # ID Buttons Panel
+        self.id_btn_panel = QWidget()
+        id_btn_layout = QVBoxLayout(self.id_btn_panel)
+        id_btn_layout.setContentsMargins(0, 0, 0, 0)
+        id_btn_layout.setSpacing(0)
+        id_btn_layout.addStretch()
+        self.button_stack.addWidget(self.id_btn_panel)
+
+        for txt, func, style in [
+            ("Accept Candidate", self.accept_candidate, "font-weight: bold;"),
+            ("Mark as Maybe", self.mark_as_maybe, ""),
+            ("Reject Candidate", self.reject_candidate, ""),
+            ("Exit Peak ID", self.exit_identification, ""),
+        ]:
+            btn = QPushButton(txt)
+            btn.clicked.connect(func)
+            btn.setStyleSheet(style)
+            id_btn_layout.addWidget(btn)
+
+        self.button_stack.setCurrentIndex(0)
 
         # Peaks List
         self.peak_list = QListWidget()
@@ -103,22 +158,46 @@ class CsdPeakIdentifierApp(QMainWindow):
                 np.array([idx]),
             )
 
-        self.canvas.redraw(self.csd, self.identified, candidate, target_ev)
-        if rebuild or self.eval_list.count() != len(self.identified):
+        if candidate is None:
+            row = self.candidate_list.currentRow()
+            if 0 <= row < len(self.candidates):
+                candidate = self.candidates[row]
+
+        if candidate:
+            score = candidate.score(self.csd.m_over_q.max())
+            self.info_label.setText(
+                f"<b>Candidate:</b> {candidate.symbol()} | "
+                f"<b>Mass:</b> {candidate.m} | "
+                f"<b>Z:</b> {candidate.z} | "
+                f"<b>Abundance:</b> {candidate.a:.2f}% | "
+                f"<b>Score:</b> {score*100:.1f}% (Found vs Expected)"
+            )
+        else:
+            self.info_label.setText("Select a candidate to see details")
+
+        self.canvas.redraw(self.csd, self.identified + self.maybe, candidate, target_ev)
+        if rebuild or self.eval_list.count() != (len(self.identified) + len(self.maybe)):
             self.eval_list.blockSignals(True)
             self.eval_list.clear()
             for ev in self.identified:
                 self.eval_list.addItem(
                     f"{ev.symbol()} ({ev.score(self.csd.m_over_q.max()):.2f})"
                 )
+            for ev in self.maybe:
+                item = QListWidgetItem(
+                    f"{ev.symbol()} (maybe) ({ev.score(self.csd.m_over_q.max()):.2f})"
+                )
+                item.setForeground(Qt.darkBlue)
+                self.eval_list.addItem(item)
             self.eval_list.blockSignals(False)
         self.update_peak_list()
 
     def update_peak_list(self):
         self.peak_list.blockSignals(True)
         self.peak_list.clear()
+        combined_identified = self.identified + self.maybe
         pk_map = {
-            p: [ev.symbol() for ev in self.identified if p in ev.peak_indices]
+            p: [ev.symbol() for ev in combined_identified if p in ev.peak_indices]
             for p in self.peaks
         }
         target_item = None
@@ -153,6 +232,26 @@ class CsdPeakIdentifierApp(QMainWindow):
         self.targeted_mq = item.data(Qt.UserRole)
         self.update_view()
 
+    def handle_candidate_selection(self):
+        self.update_view()
+
+    def update_candidate_list(self):
+        self.candidate_list.blockSignals(True)
+        self.candidate_list.clear()
+        for c in self.candidates:
+            item = QListWidgetItem(
+                f"{c.symbol()} (S: {c.score(self.targeted_mq * 2):.2f}, A: {c.a:.1f})"
+            )
+            if c.symbol() in self.rejected_symbols:
+                font = item.font()
+                font.setStrikeOut(True)
+                item.setFont(font)
+                item.setForeground(Qt.gray)
+            self.candidate_list.addItem(item)
+        if self.candidates:
+            self.candidate_list.setCurrentRow(0)
+        self.candidate_list.blockSignals(False)
+
     def keyPressEvent(self, event):
         if event.key() in (Qt.Key_Return, Qt.Key_Enter):
             self.start_identification()
@@ -173,7 +272,7 @@ class CsdPeakIdentifierApp(QMainWindow):
             return
         mq, p_mqs = self.targeted_mq, self.csd.m_over_q[self.peaks]
         p_idx = self.peaks[np.argmin(np.abs(p_mqs - mq))]
-        candidates = []
+        self.candidates = []
         for q in range(1, 31):
             matches = self.isotopes[
                 (self.isotopes["m"] > mq * q - 0.5)
@@ -184,32 +283,69 @@ class CsdPeakIdentifierApp(QMainWindow):
                     continue
                 ev = create_evaluation(iso, self.csd, self.peaks)
                 if p_idx in ev.peak_indices and not any(
-                    c.symbol() == ev.symbol() for c in candidates
+                    c.symbol() == ev.symbol() for c in self.candidates
                 ):
-                    candidates.append(ev)
-        if not candidates:
+                    self.candidates.append(ev)
+        
+        if not self.candidates:
             self.status_bar.showMessage(f"No isotopic matches for m/q {mq:.2f}", 3000)
+            self.update_candidate_list()
             return
-        candidates.sort(
+            
+        self.candidates.sort(
             key=lambda c: (c.score(self.csd.m_over_q.max()), c.a), reverse=True
         )
-        dialog = CandidateSelectionDialog(candidates, mq, self)
-        dialog.table.itemSelectionChanged.connect(
-            lambda: self.update_view(dialog.get_selected())
-        )
-        if dialog.exec():
-            if dialog.action == "accept" and dialog.selected not in self.identified:
-                self.identified.append(dialog.selected)
-            elif dialog.action == "maybe":
-                self.maybe.append(dialog.selected)
+        self.button_stack.setCurrentIndex(1) # ID Mode
+        self.update_candidate_list()
+        self.update_view()
+
+    def accept_candidate(self):
+        row = self.candidate_list.currentRow()
+        if 0 <= row < len(self.candidates):
+            selected = self.candidates[row]
+            # remove from maybe if it was there
+            self.maybe = [m for m in self.maybe if m.symbol() != selected.symbol()]
+            if not any(i.symbol() == selected.symbol() for i in self.identified):
+                self.identified.append(selected)
+            self.exit_identification()
+
+    def mark_as_maybe(self):
+        row = self.candidate_list.currentRow()
+        if 0 <= row < len(self.candidates):
+            selected = self.candidates[row]
+            if not any(m.symbol() == selected.symbol() for m in self.maybe) and \
+               not any(i.symbol() == selected.symbol() for i in self.identified):
+                self.maybe.append(selected)
+                self.update_view(rebuild=True)
+
+    def reject_candidate(self):
+        row = self.candidate_list.currentRow()
+        if 0 <= row < len(self.candidates):
+            selected = self.candidates[row]
+            self.rejected_symbols.add(selected.symbol())
+            # also remove from maybe/identified if it was there
+            self.identified = [i for i in self.identified if i.symbol() != selected.symbol()]
+            self.maybe = [m for m in self.maybe if m.symbol() != selected.symbol()]
+            self.update_candidate_list()
+            self.update_view(rebuild=True)
+
+    def exit_identification(self):
+        self.candidates = []
+        self.button_stack.setCurrentIndex(0) # Main Mode
+        self.update_candidate_list()
         self.update_view()
 
     def clear_all(self):
-        self.identified, self.maybe = [], []
+        self.identified, self.maybe, self.candidates = [], [], []
+        self.rejected_symbols = set()
+        self.candidate_list.clear()
         self.update_view()
 
     def remove_selected(self):
         row = self.eval_list.currentRow()
-        if 0 <= row < len(self.identified):
-            del self.identified[row]
+        if 0 <= row < (len(self.identified) + len(self.maybe)):
+            if row < len(self.identified):
+                del self.identified[row]
+            else:
+                del self.maybe[row - len(self.identified)]
             self.update_view()
