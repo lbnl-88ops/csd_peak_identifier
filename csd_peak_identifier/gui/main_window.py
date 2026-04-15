@@ -7,7 +7,7 @@ from PySide6.QtCore import Qt
 from PySide6.QtGui import QAction
 
 from csd_peak_identifier.gui.constants import (
-    COLOR_BG, COLOR_MUTED, FONT_MONO, COLOR_TEXT
+    COLOR_BG, COLOR_MUTED, FONT_MONO, FONT_SANS, COLOR_TEXT
 )
 from csd_peak_identifier.gui.canvas import MqPlotCanvas, NavigationToolbar
 from csd_peak_identifier.gui.panels import IsotopePanel, PeakPanel, InfoPanel
@@ -44,7 +44,7 @@ class CsdPeakIdentifierApp(QMainWindow):
         
         self.mode_label = QLabel("MODE: PEAK SELECTION")
         self.mode_label.setStyleSheet(
-            f"background: {COLOR_MUTED}; color: white; padding: 4px; font-weight: bold; border-radius: 4px; font-family: {FONT_MONO};"
+            f"background: {COLOR_MUTED}; color: white; padding: 4px; font-weight: bold; border-radius: 4px; font-family: {FONT_SANS};"
         )
         self.mode_label.setAlignment(Qt.AlignCenter)
         center_layout.addWidget(self.mode_label)

@@ -5,7 +5,7 @@ from typing import List, Any, Optional
 
 from PySide6.QtCore import Qt, QObject
 from PySide6.QtGui import QColor, QFont
-from PySide6.QtWidgets import QMainWindow, QListWidgetItem, QDialog
+from PySide6.QtWidgets import QMainWindow, QListWidgetItem, QDialog, QInputDialog
 
 from csd_peak_identifier.logic import (
     ElementEvaluation, 
@@ -15,7 +15,7 @@ from csd_peak_identifier.logic import (
 )
 from csd_peak_identifier.gui.constants import (
     ISOTOPE_DATA, COLOR_INFO, COLOR_IDENTIFIED, COLOR_MAYBE, 
-    COLOR_REJECTED, COLOR_TARGET, COLOR_ACTION, FONT_MONO,
+    COLOR_REJECTED, COLOR_TARGET, COLOR_ACTION, FONT_MONO, FONT_SANS,
     COLOR_MUTED, COLOR_TEXT
 )
 from csd_peak_identifier.gui.panels import IsotopePanel, PeakPanel, InfoPanel
@@ -70,6 +70,7 @@ class Coordinator(QObject):
         self._isotope_panel.clear_btn.clicked.connect(self.clear_all)
         self._isotope_panel.candidate_list.itemSelectionChanged.connect(self.handle_candidate_selection)
         self._isotope_panel.eval_list.itemSelectionChanged.connect(self.handle_isotope_selection)
+        self._isotope_panel.add_isotope_btn.clicked.connect(self.manual_add_isotope)
         
         # ID Mode buttons
         self._isotope_panel.accept_btn.clicked.connect(self.accept_candidate)
@@ -83,6 +84,32 @@ class Coordinator(QObject):
         self._peak_panel.peak_list.itemSelectionChanged.connect(self.update_association_view)
         self._peak_panel.remove_assoc_btn.clicked.connect(self.remove_selected_association)
         self._peak_panel.assoc_list.itemSelectionChanged.connect(self.update_button_states)
+
+    def manual_add_isotope(self):
+        text, ok = QInputDialog.getText(
+            self._main_window, "Manual Isotope Entry", 
+            "Enter isotope (e.g., 'Ar' or 'Ar-40'):"
+        )
+        if ok and text:
+            matches = lookup_isotopes(text, self.isotopes)
+            if matches.empty:
+                self._main_window.statusBar().showMessage(f"No isotope found for '{text}'", 3000)
+                return
+            
+            # If multiple isotopes found (like for just "Ar"), take the most abundant stable one
+            best_iso = matches.iloc[matches["a"].argmax()]
+            ev = create_evaluation(best_iso, self.csd, self.peaks)
+            
+            # Check if already identified
+            if any(i.symbol() == ev.symbol() for i in self.identified):
+                self._main_window.statusBar().showMessage(f"{ev.symbol()} already identified.", 3000)
+                return
+            
+            self.identified.append(ev)
+            # Remove from maybe if it was there
+            self.maybe = [m for m in self.maybe if m.symbol() != ev.symbol()]
+            self.update_view(rebuild=True)
+            self._main_window.statusBar().showMessage(f"Added {ev.symbol()}.", 3000)
 
     def load_csd(self, csd_path: Path):
         self.csd, self.peaks = load_and_calibrate_csd(csd_path)
@@ -264,10 +291,13 @@ class Coordinator(QObject):
         self._isotope_panel.remove_btn.setEnabled(not is_id_mode and self._isotope_panel.eval_list.currentRow() >= 0)
         self._isotope_panel.clear_btn.setEnabled(not is_id_mode and (len(self.identified) > 0 or len(self.maybe) > 0))
         
-        # 4. Remove association (Peak Panel)
+        # 4. Add Isotope (Sidebar)
+        self._isotope_panel.add_isotope_btn.setEnabled(not is_id_mode)
+
+        # 5. Remove association (Peak Panel)
         self._peak_panel.remove_assoc_btn.setEnabled(not is_id_mode and self._peak_panel.assoc_list.currentRow() >= 0)
         
-        # 5. List deactivation during ID mode
+        # 6. List deactivation during ID mode
         self._isotope_panel.eval_list.setEnabled(not is_id_mode)
         self._peak_panel.peak_list.setEnabled(not is_id_mode)
         self._peak_panel.assoc_list.setEnabled(not is_id_mode)
@@ -321,7 +351,7 @@ class Coordinator(QObject):
         self._isotope_panel.button_stack.setCurrentIndex(1)  # ID Mode
         self._main_window.mode_label.setText("MODE: PEAK IDENTIFICATION")
         self._main_window.mode_label.setStyleSheet(
-            f"background: {COLOR_TARGET}; color: white; padding: 4px; font-weight: bold; border-radius: 4px; font-family: {FONT_MONO};"
+            f"background: {COLOR_TARGET}; color: white; padding: 4px; font-weight: bold; border-radius: 4px; font-family: {FONT_SANS};"
         )
         self._isotope_panel.candidate_header.setText("Candidate isotopes (sorted by score)")
         self._isotope_panel.eval_list.setEnabled(False)
@@ -334,7 +364,7 @@ class Coordinator(QObject):
         self._isotope_panel.button_stack.setCurrentIndex(0)  # Main Mode
         self._main_window.mode_label.setText("MODE: PEAK SELECTION")
         self._main_window.mode_label.setStyleSheet(
-            f"background: {COLOR_MUTED}; color: white; padding: 4px; font-weight: bold; border-radius: 4px; font-family: {FONT_MONO};"
+            f"background: {COLOR_MUTED}; color: white; padding: 4px; font-weight: bold; border-radius: 4px; font-family: {FONT_SANS};"
         )
         self._isotope_panel.candidate_header.setText("Candidate isotopes")
         self._isotope_panel.eval_list.setEnabled(True)

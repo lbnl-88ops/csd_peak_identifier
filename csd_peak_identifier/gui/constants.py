@@ -40,3 +40,4 @@ MARKERS = ["v", "^", "p", "d", "*", "D"]
 SHADES = ["white", "#f0f0f0", "white"]
 # Preferred font stack for maximum readability and cross-platform consistency.
 FONT_MONO = "Consolas, 'Liberation Mono', Menlo, Monaco, 'DejaVu Sans Mono', monospace"
+FONT_SANS = "'Segoe UI', Roboto, 'Helvetica Neue', Arial, 'Liberation Sans', sans-serif"
