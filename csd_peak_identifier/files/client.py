@@ -13,14 +13,11 @@ def list_files() -> List[Path]:
     url = f"{API_URL}/files"
     try:
         response = requests.get(url, timeout=5)
-        if response.status_code == 200:
-            return [Path(filename) for filename in response.json()]
-        else:
-            _log.error(f"Failed to retrieve files from {url}")
-            return []
+        response.raise_for_status()
+        return [Path(filename) for filename in response.json()]
     except Exception as e:
         _log.error(f"Error fetching file list: {e}")
-        return []
+        raise
 
 def get_remote_files() -> List[CSDFile]:
     """Returns a list of CSDFile objects for all files found on the server."""

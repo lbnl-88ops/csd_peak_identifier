@@ -2,11 +2,11 @@ from PySide6.QtWidgets import (
     QDialog, QVBoxLayout, QHBoxLayout, QLabel, 
     QListWidget, QPushButton, QDialogButtonBox, QListWidgetItem
 )
-from PySide6.QtCore import Qt
+from PySide6.QtCore import Qt, QTimer
 from csd_peak_identifier.gui.constants import (
-    COLOR_BG, COLOR_IDENTIFIED, COLOR_TARGET
+    COLOR_BG, COLOR_IDENTIFIED, COLOR_TARGET, COLOR_TEXT
 )
-from csd_peak_identifier.gui.styles import LIST_STYLE, add_button, add_label
+from csd_peak_identifier.gui.styles import LIST_STYLE, LABEL_STYLE, add_button, add_label
 from csd_peak_identifier.files.client import get_remote_files
 
 class CsdOpenDialog(QDialog):
@@ -16,13 +16,17 @@ class CsdOpenDialog(QDialog):
         self.resize(500, 600)
         self.setStyleSheet(f"background: {COLOR_BG};")
         self.create_widgets()
-        self.refresh_files()
+        
+        # Manifest immediately, then begin the connection ritual after a short delay
+        # to ensure the UI is rendered and responsive to the user's eyes.
+        QTimer.singleShot(100, self.refresh_files)
 
     def create_widgets(self):
         layout = QVBoxLayout(self)
         
-        self.status_label = add_label(layout, "Checking server connection...")
-        self.status_label.setStyleSheet(self.status_label.styleSheet() + " font-weight: bold; padding: 5px;")
+        self.status_label = QLabel("INITIALIZING CONNECTION...")
+        self.status_label.setStyleSheet(LABEL_STYLE + " font-weight: bold; padding: 5px;")
+        layout.addWidget(self.status_label)
 
         add_label(layout, "Available CSD files (timestamp):")
         self.file_list = QListWidget()
@@ -37,13 +41,21 @@ class CsdOpenDialog(QDialog):
         self.buttons = QDialogButtonBox(QDialogButtonBox.Open | QDialogButtonBox.Cancel)
         self.buttons.accepted.connect(self.accept)
         self.buttons.rejected.connect(self.reject)
-        # Style the buttons in the button box is harder, but we can set the style on the box
         self.buttons.setStyleSheet(f"font-family: 'Segoe UI', sans-serif;")
         
         btn_layout.addWidget(self.buttons)
         layout.addLayout(btn_layout)
 
     def refresh_files(self):
+        self.status_label.setText("SERVER: ATTEMPTING CONNECTION...")
+        self.status_label.setStyleSheet(LABEL_STYLE + f" font-weight: bold; padding: 5px; color: {COLOR_TEXT};")
+        self.refresh_btn.setEnabled(False)
+        self.buttons.button(QDialogButtonBox.Open).setEnabled(False)
+        
+        # Process events to show the status update before blocking
+        from PySide6.QtWidgets import QApplication
+        QApplication.processEvents()
+        
         try:
             csd_files = get_remote_files()
             self.file_list.clear()
@@ -53,10 +65,13 @@ class CsdOpenDialog(QDialog):
                 self.file_list.addItem(item)
             
             self.status_label.setText(f"SERVER: CONNECTED | FILES: {len(csd_files)}")
-            self.status_label.setStyleSheet(self.status_label.styleSheet() + f" color: {COLOR_IDENTIFIED};")
+            self.status_label.setStyleSheet(LABEL_STYLE + f" font-weight: bold; padding: 5px; color: {COLOR_IDENTIFIED};")
         except Exception as e:
             self.status_label.setText(f"SERVER: ERROR ({str(e)})")
-            self.status_label.setStyleSheet(self.status_label.styleSheet() + f" color: {COLOR_TARGET};")
+            self.status_label.setStyleSheet(LABEL_STYLE + f" font-weight: bold; padding: 5px; color: {COLOR_TARGET};")
+        
+        self.refresh_btn.setEnabled(True)
+        self.buttons.button(QDialogButtonBox.Open).setEnabled(True)
 
     def get_selected_file(self):
         item = self.file_list.currentItem()
