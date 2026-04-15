@@ -127,7 +127,7 @@ class CsdPeakIdentifierApp(QMainWindow):
 
         self.peak_group = QGroupBox("Peaks")
         self.peak_group.setStyleSheet(
-            f"QGroupBox {{ font-family: {FONT_MONO}; color: {COLOR_TEXT}; font-weight: bold; border: 1px solid {COLOR_GRID}; margin-top: 1.5ex; }} QGroupBox::title {{ subcontrol-origin: margin; left: 10px; padding: 0 3px; }}"
+            f"QGroupBox {{ font-family: {FONT_MONO}; color: {COLOR_TEXT}; font-weight: bold; border: 1px solid {COLOR_GRID}; margin-top: 0.5ex; }} QGroupBox::title {{ subcontrol-origin: margin; left: 10px; padding: 0 3px; }}"
         )
         right_panel = QVBoxLayout(self.peak_group)
         main_layout.addWidget(self.peak_group, 1)
