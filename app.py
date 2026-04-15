@@ -24,7 +24,7 @@ def main():
     window.set_coordinator(coordinator)
     
     # Initialize state and show
-    coordinator.initialize(DEFAULT_CSD)
+    coordinator.initialize()
     window.show()
     
     sys.exit(app.exec())

@@ -34,6 +34,11 @@ class MqPlotCanvas(FigureCanvas):
         self.axes.spines["top"].set_linewidth(0.1)
         self.axes.spines["right"].set_linewidth(0.1)
 
+        if csd is None:
+            self.axes.grid(color=COLOR_GRID, ls="--", alpha=0.5)
+            self.draw()
+            return
+
         if csd.m_over_q is not None:
             self.axes.plot(
                 csd.m_over_q,

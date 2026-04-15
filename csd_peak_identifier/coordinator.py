@@ -71,8 +71,9 @@ class Coordinator(QObject):
         else:
             raise RuntimeError(f"Coordinator passed bad object {obj}")
 
-    def initialize(self, csd_path: Path):
-        self.load_csd(CSDFile(csd_path))
+    def initialize(self, csd_path: Optional[Path] = None):
+        if csd_path:
+            self.load_csd(CSDFile(csd_path))
         self._configure_signals()
         self.update_view(rebuild=True)
 
@@ -108,6 +109,8 @@ class Coordinator(QObject):
         )
 
     def manual_add_isotope(self):
+        if self.csd is None:
+            return
         text, ok = QInputDialog.getText(
             self._main_window,
             "Manual Isotope Entry",
@@ -156,7 +159,7 @@ class Coordinator(QObject):
 
     def update_view(self, candidate=None, rebuild=False):
         target_ev = None
-        if self.targeted_mq:
+        if self.targeted_mq and self.csd is not None:
             idx = np.argmin(np.abs(self.csd.m_over_q - self.targeted_mq))
             target_ev = ElementEvaluation(
                 "TARGET",
@@ -196,7 +199,7 @@ class Coordinator(QObject):
             target_ev = None
 
         if highlight_ev:
-            score = highlight_ev.score(self.csd.m_over_q.max())
+            score = highlight_ev.score(self.csd.m_over_q.max()) if self.csd is not None else 0.0
             self._info_panel.setText(
                 f"<b style='color:{COLOR_INFO}'>Candidate:</b> {highlight_ev.symbol()} | "
                 f"<b>Mass:</b> {highlight_ev.m} | "
@@ -228,15 +231,16 @@ class Coordinator(QObject):
     def update_identified_list(self):
         self._isotope_panel.eval_list.blockSignals(True)
         self._isotope_panel.eval_list.clear()
+        max_mq = self.csd.m_over_q.max() if self.csd is not None else 0.0
         for ev in self.identified:
             item = QListWidgetItem(
-                f"{ev.symbol()} ({ev.score(self.csd.m_over_q.max()):.2f})"
+                f"{ev.symbol()} ({ev.score(max_mq):.2f})"
             )
             item.setForeground(QColor(COLOR_IDENTIFIED))
             self._isotope_panel.eval_list.addItem(item)
         for ev in self.maybe:
             item = QListWidgetItem(
-                f"{ev.symbol()} (maybe) ({ev.score(self.csd.m_over_q.max()):.2f})"
+                f"{ev.symbol()} (maybe) ({ev.score(max_mq):.2f})"
             )
             item.setForeground(QColor(COLOR_MAYBE))
             self._isotope_panel.eval_list.addItem(item)
@@ -251,6 +255,10 @@ class Coordinator(QObject):
         )
 
         self._peak_panel.peak_list.clear()
+        if self.csd is None or self.peaks is None:
+            self._peak_panel.peak_list.blockSignals(False)
+            return
+
         combined_identified = self.identified + self.maybe
         pk_map = {
             p: [ev.symbol() for ev in combined_identified if p in ev.peak_indices]
@@ -286,6 +294,8 @@ class Coordinator(QObject):
         self._peak_panel.peak_list.blockSignals(False)
 
     def handle_peak_click(self, x, y):
+        if self.csd is None:
+            return
         # Deselect isotope
         self._isotope_panel.eval_list.blockSignals(True)
         self._isotope_panel.eval_list.clearSelection()
@@ -308,7 +318,7 @@ class Coordinator(QObject):
         self.update_view()
 
     def navigate_peaks(self, direction: int):
-        if self.targeted_mq is None:
+        if self.targeted_mq is None or self.csd is None:
             return
         mqs = sorted([float(self.csd.m_over_q[p]) for p in self.peaks])
         idx = np.argmin(np.abs(np.array(mqs) - self.targeted_mq))
@@ -352,7 +362,9 @@ class Coordinator(QObject):
         )
 
         # 4. Add Isotope (Sidebar)
-        self._isotope_panel.add_isotope_btn.setEnabled(not is_id_mode)
+        self._isotope_panel.add_isotope_btn.setEnabled(
+            not is_id_mode and self.csd is not None
+        )
 
         # 5. Remove association (Peak Panel)
         self._peak_panel.remove_assoc_btn.setEnabled(
@@ -383,7 +395,7 @@ class Coordinator(QObject):
         self._isotope_panel.candidate_list.blockSignals(False)
 
     def start_identification(self):
-        if not self.targeted_mq:
+        if not self.targeted_mq or self.csd is None:
             return
         mq, p_mqs = self.targeted_mq, self.csd.m_over_q[self.peaks]
         p_idx = self.peaks[np.argmin(np.abs(p_mqs - mq))]
@@ -493,6 +505,10 @@ class Coordinator(QObject):
     def update_association_view(self):
         self._peak_panel.assoc_list.blockSignals(True)
         self._peak_panel.assoc_list.clear()
+
+        if self.csd is None or self.peaks is None:
+            self._peak_panel.assoc_list.blockSignals(False)
+            return
 
         current_peak_item = self._peak_panel.peak_list.currentItem()
         if not current_peak_item:
