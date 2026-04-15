@@ -9,15 +9,23 @@ from PySide6.QtWidgets import QMainWindow, QListWidgetItem, QDialog, QInputDialo
 
 from csd_peak_identifier.files.csd_file import CSDFile
 from csd_peak_identifier.logic import (
-    ElementEvaluation, 
-    create_evaluation, 
-    lookup_isotopes, 
-    load_and_calibrate_csd
+    ElementEvaluation,
+    create_evaluation,
+    lookup_isotopes,
+    load_and_calibrate_csd,
 )
 from csd_peak_identifier.gui.constants import (
-    ISOTOPE_DATA, COLOR_INFO, COLOR_IDENTIFIED, COLOR_MAYBE, 
-    COLOR_REJECTED, COLOR_TARGET, COLOR_ACTION, FONT_MONO, FONT_SANS,
-    COLOR_MUTED, COLOR_TEXT
+    ISOTOPE_DATA,
+    COLOR_INFO,
+    COLOR_IDENTIFIED,
+    COLOR_MAYBE,
+    COLOR_REJECTED,
+    COLOR_TARGET,
+    COLOR_ACTION,
+    FONT_MONO,
+    FONT_SANS,
+    COLOR_MUTED,
+    COLOR_TEXT,
 )
 from csd_peak_identifier.gui.styles import MODE_INDICATOR_STYLE
 from csd_peak_identifier.gui.panels import IsotopePanel, PeakPanel, InfoPanel
@@ -25,11 +33,12 @@ from csd_peak_identifier.gui.canvas import MqPlotCanvas
 from csd_peak_identifier.gui.open_dialog import CsdOpenDialog
 from csd_peak_identifier.files.client import download_filepair
 
+
 class Coordinator(QObject):
     def __init__(self, main_window: QMainWindow):
         super().__init__()
         self._main_window = main_window
-        
+
         # State
         self.isotopes = pd.read_csv(
             ISOTOPE_DATA, delimiter="\\s+", names=["s", "z", "a", "m"]
@@ -42,7 +51,7 @@ class Coordinator(QObject):
         self.rejected_symbols = set()
         self.candidates: List[ElementEvaluation] = []
         self.targeted_mq: Optional[float] = None
-        
+
         # UI Objects (to be attached)
         self._isotope_panel: Optional[IsotopePanel] = None
         self._peak_panel: Optional[PeakPanel] = None
@@ -71,43 +80,58 @@ class Coordinator(QObject):
         # Isotope Panel Signals
         self._isotope_panel.remove_btn.clicked.connect(self.remove_selected)
         self._isotope_panel.clear_btn.clicked.connect(self.clear_all)
-        self._isotope_panel.candidate_list.itemSelectionChanged.connect(self.handle_candidate_selection)
-        self._isotope_panel.eval_list.itemSelectionChanged.connect(self.handle_isotope_selection)
+        self._isotope_panel.candidate_list.itemSelectionChanged.connect(
+            self.handle_candidate_selection
+        )
+        self._isotope_panel.eval_list.itemSelectionChanged.connect(
+            self.handle_isotope_selection
+        )
         self._isotope_panel.add_isotope_btn.clicked.connect(self.manual_add_isotope)
-        
+
         # ID Mode buttons
         self._isotope_panel.accept_btn.clicked.connect(self.accept_candidate)
         self._isotope_panel.maybe_btn.clicked.connect(self.mark_as_maybe)
         self._isotope_panel.reject_btn.clicked.connect(self.reject_candidate)
         self._isotope_panel.exit_btn.clicked.connect(self.exit_identification)
-        
+
         # Peak Panel Signals
         self._peak_panel.search_btn.clicked.connect(self.start_identification)
         self._peak_panel.peak_list.itemClicked.connect(self.handle_peak_list_click)
-        self._peak_panel.peak_list.itemSelectionChanged.connect(self.update_association_view)
-        self._peak_panel.remove_assoc_btn.clicked.connect(self.remove_selected_association)
-        self._peak_panel.assoc_list.itemSelectionChanged.connect(self.update_button_states)
+        self._peak_panel.peak_list.itemSelectionChanged.connect(
+            self.update_association_view
+        )
+        self._peak_panel.remove_assoc_btn.clicked.connect(
+            self.remove_selected_association
+        )
+        self._peak_panel.assoc_list.itemSelectionChanged.connect(
+            self.update_button_states
+        )
 
     def manual_add_isotope(self):
         text, ok = QInputDialog.getText(
-            self._main_window, "Manual Isotope Entry", 
-            "Enter isotope (e.g., 'Ar' or 'Ar-40'):"
+            self._main_window,
+            "Manual Isotope Entry",
+            "Enter isotope (e.g., 'Ar' or 'Ar-40'):",
         )
         if ok and text:
             matches = lookup_isotopes(text, self.isotopes)
             if matches.empty:
-                self._main_window.statusBar().showMessage(f"No isotope found for '{text}'", 3000)
+                self._main_window.statusBar().showMessage(
+                    f"No isotope found for '{text}'", 3000
+                )
                 return
-            
+
             # If multiple isotopes found (like for just "Ar"), take the most abundant stable one
             best_iso = matches.iloc[matches["a"].argmax()]
             ev = create_evaluation(best_iso, self.csd, self.peaks)
-            
+
             # Check if already identified
             if any(i.symbol() == ev.symbol() for i in self.identified):
-                self._main_window.statusBar().showMessage(f"{ev.symbol()} already identified.", 3000)
+                self._main_window.statusBar().showMessage(
+                    f"{ev.symbol()} already identified.", 3000
+                )
                 return
-            
+
             self.identified.append(ev)
             # Remove from maybe if it was there
             self.maybe = [m for m in self.maybe if m.symbol() != ev.symbol()]
@@ -135,7 +159,10 @@ class Coordinator(QObject):
         if self.targeted_mq:
             idx = np.argmin(np.abs(self.csd.m_over_q - self.targeted_mq))
             target_ev = ElementEvaluation(
-                "TARGET", 0, 0, 0.0,
+                "TARGET",
+                0,
+                0,
+                0.0,
                 np.array([float(self.csd.m_over_q[idx])]),
                 np.array([float(self.csd.beam_current[idx])]),
                 np.array([idx]),
@@ -149,10 +176,17 @@ class Coordinator(QObject):
                 row = self._isotope_panel.eval_list.currentRow()
                 if 0 <= row < len(self.identified):
                     highlight_ev = self.identified[row]
-                elif len(self.identified) <= row < (len(self.identified) + len(self.maybe)):
+                elif (
+                    len(self.identified)
+                    <= row
+                    < (len(self.identified) + len(self.maybe))
+                ):
                     highlight_ev = self.maybe[row - len(self.identified)]
-            
-            if highlight_ev is None and self._isotope_panel.candidate_list.selectedItems():
+
+            if (
+                highlight_ev is None
+                and self._isotope_panel.candidate_list.selectedItems()
+            ):
                 row = self._isotope_panel.candidate_list.currentRow()
                 if 0 <= row < len(self.candidates):
                     highlight_ev = self.candidates[row]
@@ -175,12 +209,18 @@ class Coordinator(QObject):
 
         if self._plot:
             title = self.csd_file.formatted_datetime if self.csd_file else None
-            self._plot.redraw(self.csd, self.identified + self.maybe, highlight_ev, target_ev, title=title)
+            self._plot.redraw(
+                self.csd,
+                self.identified + self.maybe,
+                highlight_ev,
+                target_ev,
+                title=title,
+            )
 
         if rebuild:
             self.update_candidate_list()
             self.update_identified_list()
-        
+
         self.update_peak_list()
         self.update_association_view()
         self.update_button_states()
@@ -189,11 +229,15 @@ class Coordinator(QObject):
         self._isotope_panel.eval_list.blockSignals(True)
         self._isotope_panel.eval_list.clear()
         for ev in self.identified:
-            item = QListWidgetItem(f"{ev.symbol()} ({ev.score(self.csd.m_over_q.max()):.2f})")
+            item = QListWidgetItem(
+                f"{ev.symbol()} ({ev.score(self.csd.m_over_q.max()):.2f})"
+            )
             item.setForeground(QColor(COLOR_IDENTIFIED))
             self._isotope_panel.eval_list.addItem(item)
         for ev in self.maybe:
-            item = QListWidgetItem(f"{ev.symbol()} (maybe) ({ev.score(self.csd.m_over_q.max()):.2f})")
+            item = QListWidgetItem(
+                f"{ev.symbol()} (maybe) ({ev.score(self.csd.m_over_q.max()):.2f})"
+            )
             item.setForeground(QColor(COLOR_MAYBE))
             self._isotope_panel.eval_list.addItem(item)
         self._isotope_panel.eval_list.blockSignals(False)
@@ -202,7 +246,8 @@ class Coordinator(QObject):
         self._peak_panel.peak_list.blockSignals(True)
         current_mq = (
             self._peak_panel.peak_list.currentItem().data(Qt.UserRole)
-            if self._peak_panel.peak_list.currentItem() else None
+            if self._peak_panel.peak_list.currentItem()
+            else None
         )
 
         self._peak_panel.peak_list.clear()
@@ -218,7 +263,7 @@ class Coordinator(QObject):
                 float(self.csd.beam_current[p_idx]),
                 pk_map[p_idx],
             )
-            txt = f"{'✓' if elems else '●'} {mq:5.2f} | {cur:6.2f} uA {'[' + ','.join(elems) + ']' if elems else ''}"
+            txt = f"{'✓' if elems else '●'} {mq:5.2f} | {cur:6.2f}"
             item = QListWidgetItem(txt)
             item.setData(Qt.UserRole, mq)
             if elems:
@@ -227,7 +272,11 @@ class Coordinator(QObject):
 
             if self.targeted_mq and abs(mq - self.targeted_mq) < 0.0001:
                 target_item = item
-            elif not target_item and current_mq is not None and abs(mq - current_mq) < 0.0001:
+            elif (
+                not target_item
+                and current_mq is not None
+                and abs(mq - current_mq) < 0.0001
+            ):
                 target_item = item
 
         if target_item:
@@ -241,7 +290,7 @@ class Coordinator(QObject):
         self._isotope_panel.eval_list.blockSignals(True)
         self._isotope_panel.eval_list.clearSelection()
         self._isotope_panel.eval_list.blockSignals(False)
-        
+
         self.targeted_mq = float(
             self.csd.m_over_q[
                 self.peaks[np.argmin(np.abs(self.csd.m_over_q[self.peaks] - x))]
@@ -254,7 +303,7 @@ class Coordinator(QObject):
         self._isotope_panel.eval_list.blockSignals(True)
         self._isotope_panel.eval_list.clearSelection()
         self._isotope_panel.eval_list.blockSignals(False)
-        
+
         self.targeted_mq = item.data(Qt.UserRole)
         self.update_view()
 
@@ -264,12 +313,12 @@ class Coordinator(QObject):
         mqs = sorted([float(self.csd.m_over_q[p]) for p in self.peaks])
         idx = np.argmin(np.abs(np.array(mqs) - self.targeted_mq))
         self.targeted_mq = mqs[(idx + direction) % len(mqs)]
-        
+
         # Also clear isotope selection when navigating peaks
         self._isotope_panel.eval_list.blockSignals(True)
         self._isotope_panel.eval_list.clearSelection()
         self._isotope_panel.eval_list.blockSignals(False)
-        
+
         self.update_view()
 
     def handle_candidate_selection(self):
@@ -288,20 +337,28 @@ class Coordinator(QObject):
     def update_button_states(self):
         # 1. Main Mode vs ID Mode
         is_id_mode = self._isotope_panel.button_stack.currentIndex() == 1
-        
+
         # 2. Identify Peak button (Peak Panel)
-        self._peak_panel.search_btn.setEnabled(not is_id_mode and self.targeted_mq is not None)
-        
+        self._peak_panel.search_btn.setEnabled(
+            not is_id_mode and self.targeted_mq is not None
+        )
+
         # 3. Remove Identified / Clear All (Sidebar)
-        self._isotope_panel.remove_btn.setEnabled(not is_id_mode and self._isotope_panel.eval_list.currentRow() >= 0)
-        self._isotope_panel.clear_btn.setEnabled(not is_id_mode and (len(self.identified) > 0 or len(self.maybe) > 0))
-        
+        self._isotope_panel.remove_btn.setEnabled(
+            not is_id_mode and self._isotope_panel.eval_list.currentRow() >= 0
+        )
+        self._isotope_panel.clear_btn.setEnabled(
+            not is_id_mode and (len(self.identified) > 0 or len(self.maybe) > 0)
+        )
+
         # 4. Add Isotope (Sidebar)
         self._isotope_panel.add_isotope_btn.setEnabled(not is_id_mode)
 
         # 5. Remove association (Peak Panel)
-        self._peak_panel.remove_assoc_btn.setEnabled(not is_id_mode and self._peak_panel.assoc_list.currentRow() >= 0)
-        
+        self._peak_panel.remove_assoc_btn.setEnabled(
+            not is_id_mode and self._peak_panel.assoc_list.currentRow() >= 0
+        )
+
         # 6. List deactivation during ID mode
         self._isotope_panel.eval_list.setEnabled(not is_id_mode)
         self._peak_panel.peak_list.setEnabled(not is_id_mode)
@@ -346,7 +403,9 @@ class Coordinator(QObject):
                     self.candidates.append(ev)
 
         if not self.candidates:
-            self._main_window.statusBar().showMessage(f"No isotopic matches for m/q {mq:.2f}", 3000)
+            self._main_window.statusBar().showMessage(
+                f"No isotopic matches for m/q {mq:.2f}", 3000
+            )
             self.update_candidate_list()
             return
 
@@ -358,7 +417,9 @@ class Coordinator(QObject):
         self._main_window.mode_label.setStyleSheet(
             MODE_INDICATOR_STYLE + f"background: {COLOR_TARGET};"
         )
-        self._isotope_panel.candidate_header.setText("Candidate isotopes (sorted by score)")
+        self._isotope_panel.candidate_header.setText(
+            "Candidate isotopes (sorted by score)"
+        )
         self._isotope_panel.eval_list.setEnabled(False)
         self._peak_panel.peak_list.setEnabled(False)
         self.update_candidate_list()
@@ -404,7 +465,9 @@ class Coordinator(QObject):
         if 0 <= row < len(self.candidates):
             selected = self.candidates[row]
             self.rejected_symbols.add(selected.symbol())
-            self.identified = [i for i in self.identified if i.symbol() != selected.symbol()]
+            self.identified = [
+                i for i in self.identified if i.symbol() != selected.symbol()
+            ]
             self.maybe = [m for m in self.maybe if m.symbol() != selected.symbol()]
             self.update_candidate_list()
             self.update_view(rebuild=True)
@@ -456,10 +519,12 @@ class Coordinator(QObject):
 
     def remove_selected_association(self):
         item = self._peak_panel.assoc_list.currentItem()
-        if not item: return
+        if not item:
+            return
         symbol, category = item.data(Qt.UserRole)
         peak_item = self._peak_panel.peak_list.currentItem()
-        if not peak_item: return
+        if not peak_item:
+            return
         mq_val = peak_item.data(Qt.UserRole)
         p_idx = self.peaks[np.argmin(np.abs(self.csd.m_over_q[self.peaks] - mq_val))]
 
@@ -472,7 +537,9 @@ class Coordinator(QObject):
                 ev.m_over_q = ev.m_over_q[mask]
                 if len(ev.peak_indices) == 0:
                     if category == "identified":
-                        self.identified = [i for i in self.identified if i.symbol() != symbol]
+                        self.identified = [
+                            i for i in self.identified if i.symbol() != symbol
+                        ]
                     else:
                         self.maybe = [m for m in self.maybe if m.symbol() != symbol]
                 break

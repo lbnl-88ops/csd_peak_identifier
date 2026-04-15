@@ -93,7 +93,7 @@ class PeakPanel(QGroupBox):
     def create_widgets(self):
         layout = QVBoxLayout(self)
 
-        add_label(layout, "Detected peaks")
+        add_label(layout, "Detected peaks [m/q | μA]")
         self.peak_list = QListWidget()
         self.peak_list.setStyleSheet(LIST_STYLE)
         layout.addWidget(self.peak_list, 4)
