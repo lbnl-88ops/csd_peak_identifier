@@ -1,14 +1,15 @@
 import numpy as np
 from PySide6.QtWidgets import (
     QMainWindow, QWidget, QVBoxLayout, QHBoxLayout, 
-    QLabel, QStatusBar
+    QStatusBar
 )
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QAction
 
 from csd_peak_identifier.gui.constants import (
-    COLOR_BG, COLOR_MUTED, FONT_MONO, FONT_SANS, COLOR_TEXT
+    COLOR_BG, COLOR_MUTED, FONT_SANS
 )
+from csd_peak_identifier.gui.styles import MODE_INDICATOR_STYLE, add_label
 from csd_peak_identifier.gui.canvas import MqPlotCanvas, NavigationToolbar
 from csd_peak_identifier.gui.panels import IsotopePanel, PeakPanel, InfoPanel
 
@@ -42,9 +43,9 @@ class CsdPeakIdentifierApp(QMainWindow):
         # Center Area (Plot)
         center_layout = QVBoxLayout()
         
-        self.mode_label = QLabel("MODE: PEAK SELECTION")
+        self.mode_label = add_label(center_layout, "MODE: PEAK SELECTION")
         self.mode_label.setStyleSheet(
-            f"background: {COLOR_MUTED}; color: white; padding: 4px; font-weight: bold; border-radius: 4px; font-family: {FONT_SANS};"
+            MODE_INDICATOR_STYLE + f"background: {COLOR_MUTED};"
         )
         self.mode_label.setAlignment(Qt.AlignCenter)
         center_layout.addWidget(self.mode_label)
@@ -53,7 +54,7 @@ class CsdPeakIdentifierApp(QMainWindow):
         center_layout.addWidget(self.canvas, 1)
 
         self.toolbar = NavigationToolbar(self.canvas, self)
-        self.toolbar.setStyleSheet(f"background: {COLOR_BG}; border: none; font-family: {FONT_MONO};")
+        self.toolbar.setStyleSheet(f"background: {COLOR_BG}; border: none; font-family: {FONT_SANS};")
         center_layout.addWidget(self.toolbar)
 
         self.info_panel = InfoPanel()

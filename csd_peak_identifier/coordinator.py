@@ -18,6 +18,7 @@ from csd_peak_identifier.gui.constants import (
     COLOR_REJECTED, COLOR_TARGET, COLOR_ACTION, FONT_MONO, FONT_SANS,
     COLOR_MUTED, COLOR_TEXT
 )
+from csd_peak_identifier.gui.styles import MODE_INDICATOR_STYLE
 from csd_peak_identifier.gui.panels import IsotopePanel, PeakPanel, InfoPanel
 from csd_peak_identifier.gui.canvas import MqPlotCanvas
 from csd_peak_identifier.gui.open_dialog import CsdOpenDialog
@@ -351,7 +352,7 @@ class Coordinator(QObject):
         self._isotope_panel.button_stack.setCurrentIndex(1)  # ID Mode
         self._main_window.mode_label.setText("MODE: PEAK IDENTIFICATION")
         self._main_window.mode_label.setStyleSheet(
-            f"background: {COLOR_TARGET}; color: white; padding: 4px; font-weight: bold; border-radius: 4px; font-family: {FONT_SANS};"
+            MODE_INDICATOR_STYLE + f"background: {COLOR_TARGET};"
         )
         self._isotope_panel.candidate_header.setText("Candidate isotopes (sorted by score)")
         self._isotope_panel.eval_list.setEnabled(False)
@@ -364,7 +365,7 @@ class Coordinator(QObject):
         self._isotope_panel.button_stack.setCurrentIndex(0)  # Main Mode
         self._main_window.mode_label.setText("MODE: PEAK SELECTION")
         self._main_window.mode_label.setStyleSheet(
-            f"background: {COLOR_MUTED}; color: white; padding: 4px; font-weight: bold; border-radius: 4px; font-family: {FONT_SANS};"
+            MODE_INDICATOR_STYLE + f"background: {COLOR_MUTED};"
         )
         self._isotope_panel.candidate_header.setText("Candidate isotopes")
         self._isotope_panel.eval_list.setEnabled(True)
