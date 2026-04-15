@@ -24,8 +24,10 @@ class MqPlotCanvas(FigureCanvas):
         if event.inaxes == self.axes and event.button == 1 and self.on_mq_clicked:
             self.on_mq_clicked(event.xdata, event.ydata)
 
-    def redraw(self, csd, identified, candidate=None, target=None):
+    def redraw(self, csd, identified, candidate=None, target=None, title=None):
         self.axes.clear()
+        if title:
+            self.axes.set_title(title, fontfamily="monospace", fontsize=10, loc="left")
         self.axes.set_xlabel("m/q")
         self.axes.set_ylabel(r"Beam Current ($\mu$A)")
         self.axes.xaxis.set_major_locator(MultipleLocator(1.0))

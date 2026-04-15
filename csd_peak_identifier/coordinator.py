@@ -7,6 +7,7 @@ from PySide6.QtCore import Qt, QObject
 from PySide6.QtGui import QColor, QFont
 from PySide6.QtWidgets import QMainWindow, QListWidgetItem, QDialog, QInputDialog
 
+from csd_peak_identifier.files.csd_file import CSDFile
 from csd_peak_identifier.logic import (
     ElementEvaluation, 
     create_evaluation, 
@@ -33,6 +34,7 @@ class Coordinator(QObject):
         self.isotopes = pd.read_csv(
             ISOTOPE_DATA, delimiter="\\s+", names=["s", "z", "a", "m"]
         )
+        self.csd_file: Optional[CSDFile] = None
         self.csd = None
         self.peaks = None
         self.identified: List[ElementEvaluation] = []
@@ -61,7 +63,7 @@ class Coordinator(QObject):
             raise RuntimeError(f"Coordinator passed bad object {obj}")
 
     def initialize(self, csd_path: Path):
-        self.load_csd(csd_path)
+        self.load_csd(CSDFile(csd_path))
         self._configure_signals()
         self.update_view(rebuild=True)
 
@@ -112,8 +114,9 @@ class Coordinator(QObject):
             self.update_view(rebuild=True)
             self._main_window.statusBar().showMessage(f"Added {ev.symbol()}.", 3000)
 
-    def load_csd(self, csd_path: Path):
-        self.csd, self.peaks = load_and_calibrate_csd(csd_path)
+    def load_csd(self, csd_file: CSDFile):
+        self.csd_file = csd_file
+        self.csd, self.peaks = load_and_calibrate_csd(csd_file)
         self.clear_all()
         self.setup_persistent()
 
@@ -171,7 +174,8 @@ class Coordinator(QObject):
             self._info_panel.setText("Select a candidate to see details")
 
         if self._plot:
-            self._plot.redraw(self.csd, self.identified + self.maybe, highlight_ev, target_ev)
+            title = self.csd_file.formatted_datetime if self.csd_file else None
+            self._plot.redraw(self.csd, self.identified + self.maybe, highlight_ev, target_ev, title=title)
 
         if rebuild:
             self.update_candidate_list()
@@ -490,7 +494,7 @@ class Coordinator(QObject):
                 sb.showMessage(f"Failed to download {csd_filename}", 5000)
                 return
             sb.showMessage(f"Loading and calibrating {csd_filename}...")
-            self.load_csd(new_csd_path)
+            self.load_csd(CSDFile(new_csd_path))
             self.update_view(rebuild=True)
             sb.showMessage(f"Successfully loaded {csd_filename}", 3000)
         except Exception as e:
