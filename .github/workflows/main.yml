@@ -21,17 +21,19 @@ jobs:
         run: |
           pip install poetry
           poetry install --with windows-build
+      - name: Install NSIS
+        run: choco install nsis --yes
       - name: Build executable
         run: poetry run pyinstaller --noconsole --name peak_identifier --onedir --icon icon.ico --add-data "icon.png;." --add-data "data;data" app.py
       - name: Build installer
         run: |
-          $nsisPath = Get-ChildItem -Path "C:\Program Files*" -Filter "makensis.exe" -Recurse -ErrorAction SilentlyContinue | Select-Object -First 1 -ExpandProperty DirectoryName
-          if ($nsisPath) {
-            Write-Host "Found NSIS at: $nsisPath"
-            & "$nsisPath\makensis.exe" installer.nsi
+          # NSIS is usually in C:\Program Files (x86)\NSIS\
+          $nsisPath = "C:\Program Files (x86)\NSIS\makensis.exe"
+          if (Test-Path $nsisPath) {
+            & $nsisPath installer.nsi
           } else {
-            Write-Error "makensis.exe not found in C:\Program Files or C:\Program Files (x86)"
-            exit 1
+            # Fallback to path if choco added it correctly
+            makensis installer.nsi
           }
       - name: Create Release
         id: create_release
