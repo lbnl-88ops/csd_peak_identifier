@@ -1,10 +1,23 @@
+import sys
+import os
 from pathlib import Path
 from collections import deque
 from itertools import product
 
+def get_resource_path(relative_path):
+    """ Get absolute path to resource, works for dev and for PyInstaller """
+    try:
+        # PyInstaller creates a temp folder and stores path in _MEIPASS
+        base_path = sys._MEIPASS
+    except Exception:
+        # If not running in a bundle, use the project root
+        # This assumes constants.py is in csd_peak_identifier/gui/
+        base_path = Path(__file__).parent.parent.parent
+        
+    return Path(os.path.join(base_path, relative_path))
+
 # --- CONSTANTS ---
-CURRENT_DIR = Path(__file__).parent.parent
-DATA_PATH = CURRENT_DIR.parent / "data"
+DATA_PATH = get_resource_path("data")
 ISOTOPE_DATA = DATA_PATH / "IsotopeData.txt"
 DEFAULT_CSD = DATA_PATH / "csds" / "csd_1762894074"
 
