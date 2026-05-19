@@ -18,7 +18,7 @@ def get_resource_path(relative_path):
 
 def main():
     app = QApplication(sys.argv)
-    app.setStyle("GTK")
+    # app.setStyle("GTK")  # Removed to ensure native menu bar instead of hamburger menu
     
     # Set window icon
     icon_path = get_resource_path("icon.png")

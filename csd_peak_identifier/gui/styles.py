@@ -1,9 +1,38 @@
 from PySide6.QtWidgets import QLayout, QPushButton, QLabel
 from csd_peak_identifier.gui.constants import (
-    FONT_SANS, FONT_MONO, COLOR_TEXT, COLOR_GRID, COLOR_PLOT_BG
+    FONT_SANS, FONT_MONO, COLOR_TEXT, COLOR_GRID, COLOR_PLOT_BG, COLOR_BG, COLOR_ACTION
 )
 
 # --- GLOBAL STYLES ---
+MENU_STYLE = f"""
+    QMenuBar {{
+        background-color: {COLOR_BG};
+        color: {COLOR_TEXT};
+        font-family: {FONT_SANS};
+    }}
+    QMenuBar::item:selected {{
+        background-color: {COLOR_GRID};
+    }}
+    QMenu {{
+        background-color: {COLOR_BG};
+        color: {COLOR_TEXT};
+        border: 1px solid {COLOR_GRID};
+        font-family: {FONT_SANS};
+    }}
+    QMenu::item {{
+        padding: 5px 25px 5px 20px;
+    }}
+    QMenu::item:selected {{
+        background-color: {COLOR_GRID};
+        color: {COLOR_TEXT};
+    }}
+    QMenu::separator {{
+        height: 1px;
+        background: {COLOR_GRID};
+        margin: 5px 0px 5px 0px;
+    }}
+"""
+
 GROUP_BOX_STYLE = f"""
     QGroupBox {{ 
         font-family: {FONT_SANS}; 

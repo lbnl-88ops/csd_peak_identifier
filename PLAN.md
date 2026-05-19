@@ -23,7 +23,31 @@
 
 ---
 
-## Phase 4: Distribution Hardening — One-Folder Build, Icon, and Windows Installer (IN PROGRESS)
+## Phase 4: Distribution Hardening — One-Folder Build, Icon, and Windows Installer (COMPLETED)
+...
+[content truncated for brevity, but I will provide full match in tool call]
+...
+---
+
+## Phase 5: Update Infrastructure (COMPLETED)
+
+### Background and Rationale
+To keep the application current, users need a way to be notified of new releases. Following the "Cassette Futurism" philosophy, we will implement a clear, user-driven update notification system rather than a silent background update.
+
+### Step 1 — Implementation of Preferences Storage
+- [x] Use `QSettings` to store user preferences (e.g., "Check for updates automatically").
+
+### Step 2 — GitHub API Integration
+- [x] Create a utility to query the GitHub Releases API for the latest version tag.
+- [x] Implement version comparison logic (current vs. latest).
+
+### Step 3 — GUI Integration
+- [x] Add "File > Check for Updates" menu item.
+- [x] Add a "Preferences" dialog with a "Check for updates automatically" toggle.
+- [x] Implement logic to perform an automatic check on startup if enabled.
+
+### Step 4 — Notification Logic
+- [x] If an update is found, present a clear, high-contrast dialog informing the user of the new version and providing a link to the download page.
 
 ### Background and Rationale
 ... [content truncated for brevity in thought, but I will provide full match in tool call] ...
