@@ -15,3 +15,10 @@ build-backend = "poetry.core.masonry.api"
 
 [tool.poetry.scripts]
 csd-peak-identifier = "csd_peak_identifier.main:main"
+
+[tool.poetry.group.windows-build]
+optional = true
+
+[tool.poetry.group.windows-build.dependencies]
+pyinstaller = "^6.18.0"
+
