@@ -41,3 +41,86 @@ jobs:
         with:
           files: ./CSD_Peak_Identifier_Installer.exe
           prerelease: ${{ github.ref_name == 'main' && 'false' || 'true'}}
+
+  macos_build:
+    name: macOS Build
+    runs-on: macos-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - name: Install dependencies
+        run: |
+          pip install poetry
+          poetry install --with macos-build
+
+      # Step 6.2: Generate icon.icns from icon.png using only macOS built-in tools.
+      # sips resizes the source PNG to every resolution required by the .icns format.
+      # iconutil assembles those PNGs into a single .icns file.
+      # No third-party tools or Python packages are needed for this step.
+      - name: Generate icon.icns
+        run: |
+          mkdir -p icon.iconset
+          sips -z 16   16   icon.png --out icon.iconset/icon_16x16.png
+          sips -z 32   32   icon.png --out icon.iconset/icon_16x16@2x.png
+          sips -z 32   32   icon.png --out icon.iconset/icon_32x32.png
+          sips -z 64   64   icon.png --out icon.iconset/icon_32x32@2x.png
+          sips -z 128  128  icon.png --out icon.iconset/icon_128x128.png
+          sips -z 256  256  icon.png --out icon.iconset/icon_128x128@2x.png
+          sips -z 256  256  icon.png --out icon.iconset/icon_256x256.png
+          sips -z 512  512  icon.png --out icon.iconset/icon_256x256@2x.png
+          sips -z 512  512  icon.png --out icon.iconset/icon_512x512.png
+          sips -z 1024 1024 icon.png --out icon.iconset/icon_512x512@2x.png
+          iconutil --convert icns icon.iconset --output icon.icns
+
+      # Step 6.3: Build the .app bundle.
+      # --windowed is the macOS trigger: it suppresses the terminal window AND causes
+      # PyInstaller to wrap the onedir output in a proper .app bundle automatically.
+      # --add-data uses ':' as separator (macOS/Linux convention, not ';' like Windows).
+      # PyInstaller performs ad-hoc code signing on all collected binaries automatically;
+      # no Apple Developer account is required.
+      - name: Build .app bundle
+        run: |
+          poetry run pyinstaller \
+            --noconsole \
+            --name peak_identifier \
+            --onedir \
+            --icon icon.icns \
+            --add-data "icon.png:." \
+            --add-data "data:data" \
+            app.py
+
+      # Step 6.4: Package the .app into a distributable .dmg disk image.
+      # create-dmg is a shell script (available via Homebrew) that wraps hdiutil.
+      # --skip-jenkins is REQUIRED: GitHub Actions runners are headless. Without it,
+      # create-dmg tries to run Finder AppleScript for cosmetic layout, which hangs
+      # indefinitely in a non-GUI environment.
+      # The result is a disk image with a drag-to-Applications install experience.
+      - name: Install create-dmg
+        run: brew install create-dmg
+
+      - name: Package .app into .dmg
+        run: |
+          create-dmg \
+            --volname "CSD Peak Identifier" \
+            --window-size 540 380 \
+            --icon-size 128 \
+            --icon "peak_identifier.app" 140 185 \
+            --app-drop-link 400 185 \
+            --skip-jenkins \
+            "CSD_Peak_Identifier.dmg" \
+            "dist/"
+
+      # Step 6.5: Upload .dmg to the GitHub Release alongside the Windows installer.
+      - name: Upload .dmg to Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: ./CSD_Peak_Identifier.dmg
+          prerelease: ${{ github.ref_name == 'main' && 'false' || 'true'}}
