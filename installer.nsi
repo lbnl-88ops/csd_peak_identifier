@@ -44,8 +44,8 @@ Section "CSD Peak Identifier (required)"
     WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\CSDPeakIdentifier" "DisplayName" "CSD Peak Identifier"
     WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\CSDPeakIdentifier" "UninstallString" '"$INSTDIR\uninstall.exe"'
     WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\CSDPeakIdentifier" "DisplayIcon" '"$INSTDIR\peak_identifier.exe"'
-    WriteRegNoDWORD HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\CSDPeakIdentifier" "NoModify" 1
-    WriteRegNoDWORD HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\CSDPeakIdentifier" "NoRepair" 1
+    WriteRegDWORD HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\CSDPeakIdentifier" "NoModify" 1
+    WriteRegDWORD HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\CSDPeakIdentifier" "NoRepair" 1
     WriteUninstaller "uninstall.exe"
     
     ; Create shortcuts
