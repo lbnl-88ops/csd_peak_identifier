@@ -25,8 +25,14 @@ jobs:
         run: poetry run pyinstaller --noconsole --name peak_identifier --onedir --icon icon.ico --add-data "icon.png;." --add-data "data;data" app.py
       - name: Build installer
         run: |
-          $env:PATH += ";C:\Program Files (x86)\NSIS"
-          makensis installer.nsi
+          $nsisPath = Get-ChildItem -Path "C:\Program Files*" -Filter "makensis.exe" -Recurse -ErrorAction SilentlyContinue | Select-Object -First 1 -ExpandProperty DirectoryName
+          if ($nsisPath) {
+            Write-Host "Found NSIS at: $nsisPath"
+            & "$nsisPath\makensis.exe" installer.nsi
+          } else {
+            Write-Error "makensis.exe not found in C:\Program Files or C:\Program Files (x86)"
+            exit 1
+          }
       - name: Create Release
         id: create_release
         uses: softprops/action-gh-release@v2
