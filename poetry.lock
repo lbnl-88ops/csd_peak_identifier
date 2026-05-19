@@ -6,7 +6,7 @@ version = "0.17.5"
 description = "Python graph (network) package"
 optional = false
 python-versions = "*"
-groups = ["windows-build"]
+groups = ["macos-build", "windows-build"]
 files = [
     {file = "altgraph-0.17.5-py2.py3-none-any.whl", hash = "sha256:f3a22400bce1b0c701683820ac4f3b159cd301acab067c51c653e06961600597"},
     {file = "altgraph-0.17.5.tar.gz", hash = "sha256:c87b395dd12fabde9c99573a9749d67da8d29ef9de0125c7f536699b4a9bc9e7"},
@@ -600,7 +600,7 @@ version = "1.16.4"
 description = "Mach-O header analysis and editing"
 optional = false
 python-versions = "*"
-groups = ["windows-build"]
+groups = ["macos-build", "windows-build"]
 markers = "sys_platform == \"darwin\""
 files = [
     {file = "macholib-1.16.4-py2.py3-none-any.whl", hash = "sha256:da1a3fa8266e30f0ce7e97c6a54eefaae8edd1e5f86f3eb8b95457cae90265ea"},
@@ -804,7 +804,7 @@ version = "26.0"
 description = "Core utilities for Python packages"
 optional = false
 python-versions = ">=3.8"
-groups = ["main", "windows-build"]
+groups = ["main", "macos-build", "windows-build"]
 files = [
     {file = "packaging-26.0-py3-none-any.whl", hash = "sha256:b36f1fef9334a5588b4166f8bcd26a14e521f2b55e6b9de3aaa80d3ff7a37529"},
     {file = "packaging-26.0.tar.gz", hash = "sha256:00243ae351a257117b6a241061796684b084ed1c516a08c48a3f7e147a9d80b4"},
@@ -908,7 +908,7 @@ version = "2024.8.26"
 description = "Python PE parsing module"
 optional = false
 python-versions = ">=3.6.0"
-groups = ["windows-build"]
+groups = ["macos-build", "windows-build"]
 markers = "sys_platform == \"win32\""
 files = [
     {file = "pefile-2024.8.26-py3-none-any.whl", hash = "sha256:76f8b485dcd3b1bb8166f1128d395fa3d87af26360c2358fb75b80019b957c6f"},
@@ -921,7 +921,7 @@ version = "11.3.0"
 description = "Python Imaging Library (Fork)"
 optional = false
 python-versions = ">=3.9"
-groups = ["main", "windows-build"]
+groups = ["main", "macos-build", "windows-build"]
 files = [
     {file = "pillow-11.3.0-cp310-cp310-macosx_10_10_x86_64.whl", hash = "sha256:1b9c17fd4ace828b3003dfd1e30bff24863e0eb59b535e8f80194d9cc7ecf860"},
     {file = "pillow-11.3.0-cp310-cp310-macosx_11_0_arm64.whl", hash = "sha256:65dc69160114cdd0ca0f35cb434633c75e8e7fad4cf855177a05bf38678f73ad"},
@@ -1169,7 +1169,7 @@ version = "6.20.0"
 description = "PyInstaller bundles a Python application and all its dependencies into a single package."
 optional = false
 python-versions = "<3.15,>=3.8"
-groups = ["windows-build"]
+groups = ["macos-build", "windows-build"]
 files = [
     {file = "pyinstaller-6.20.0-py3-none-macosx_10_13_universal2.whl", hash = "sha256:bf3be4e1284ee78ddccba5e29f99443a12a7b4673168288ffc4c9d38c6f7b90e"},
     {file = "pyinstaller-6.20.0-py3-none-manylinux2014_aarch64.whl", hash = "sha256:72ae9c1fdea134afa791f58bdc9a1934d5c7609753c111e0026bfc272b32b712"},
@@ -1204,7 +1204,7 @@ version = "2026.5"
 description = "Community maintained hooks for PyInstaller"
 optional = false
 python-versions = ">=3.8"
-groups = ["windows-build"]
+groups = ["macos-build", "windows-build"]
 files = [
     {file = "pyinstaller_hooks_contrib-2026.5-py3-none-any.whl", hash = "sha256:ea1535783fbdac4626351709e83f3ea80b681d3a4745763ebb407b5e27342eb9"},
     {file = "pyinstaller_hooks_contrib-2026.5.tar.gz", hash = "sha256:f066dfca8f7c45ff6336c9cf9fe25b4e48bfeb322a1aa24faaedfb8a8d1b0b08"},
@@ -1307,7 +1307,7 @@ version = "0.2.3"
 description = "A (partial) reimplementation of pywin32 using ctypes/cffi"
 optional = false
 python-versions = ">=3.6"
-groups = ["windows-build"]
+groups = ["macos-build", "windows-build"]
 markers = "sys_platform == \"win32\""
 files = [
     {file = "pywin32-ctypes-0.2.3.tar.gz", hash = "sha256:d162dc04946d704503b2edc4d55f3dba5c1d539ead017afa00142c38b9885755"},
@@ -1483,7 +1483,7 @@ version = "82.0.1"
 description = "Most extensible Python build backend with support for C/C++ extension modules"
 optional = false
 python-versions = ">=3.9"
-groups = ["windows-build"]
+groups = ["macos-build", "windows-build"]
 files = [
     {file = "setuptools-82.0.1-py3-none-any.whl", hash = "sha256:a59e362652f08dcd477c78bb6e7bd9d80a7995bc73ce773050228a348ce2e5bb"},
     {file = "setuptools-82.0.1.tar.gz", hash = "sha256:7d872682c5d01cfde07da7bccc7b65469d3dca203318515ada1de5eda35efbf9"},
@@ -1571,4 +1571,4 @@ zstd = ["backports-zstd (>=1.0.0) ; python_version < \"3.14\""]
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.13,<3.15"
-content-hash = "c57284ce1bf83ff8bef4d6f5bd83d67b2268b6d943253143b4035d7d14c9ce3e"
+content-hash = "3841f8f5713618dec20f97ee98b54021983f3baa1312440a7632ffd93c41a33f"
