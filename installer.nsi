@@ -32,6 +32,16 @@ RequestExecutionLevel admin
 Section "CSD Peak Identifier (required)"
     SectionIn RO
     
+    ; Clean swap: Check for existing installation and remove it if found
+    ReadRegStr $R0 HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\CSDPeakIdentifier" "UninstallString"
+    StrCmp $R0 "" skip_uninst
+        ; If the uninstaller exists, run it silently
+        DetailPrint "Removing previous version..."
+        ; We use _?=$INSTDIR to ensure the uninstaller doesn't delete itself before finishing,
+        ; and ExecWait so we don't start installing until it's done.
+        ExecWait '"$INSTDIR\uninstall.exe" /S _?=$INSTDIR'
+    skip_uninst:
+
     SetOutPath "$INSTDIR"
     
     ; Files to be installed
