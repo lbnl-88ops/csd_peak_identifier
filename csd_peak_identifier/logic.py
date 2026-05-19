@@ -3,10 +3,11 @@ import pandas as pd
 from typing import Any, List, Set, cast, Dict, Optional
 from dataclasses import dataclass, field
 from pathlib import Path
+from scipy.optimize import nonlin
 from scipy.signal import find_peaks
 
 from ops.ecris.analysis.model.element import Element
-from ops.ecris.analysis.csd.polynomial_fit import polynomial_fit_mq
+from ops.ecris.analysis.csd.polynomial_fit import polynomial_fit_mq, estimate_m_over_q
 from csd_peak_identifier.files.csd_file import CSDFile
 
 
@@ -39,10 +40,16 @@ def load_and_calibrate_csd(csd_file: CSDFile) -> Any:
     csd = csd_file.csd
     if csd is None:
         return None, None
-    # Default initial calibration using Oxygen-16 (Z=8, q=4 is common)
-    csd.m_over_q, _ = polynomial_fit_mq(
-        csd, [Element("O", "Oxygen", 16, 8)], 4
+    csd.m_over_q = estimate_m_over_q(csd)
+    csd.m_over_q, sol = polynomial_fit_mq(
+        csd,
+        [Element("O", "Oxygen", 15.9949, 8)],
+        polynomial_order=4,
+        always_optimize=True,
+        nonlinear_bounds=(-1e-2, 1e-2),
+        max_function_evaluations=3000,
     )
+    print(sol)
     peaks, _ = find_peaks(csd.beam_current, height=0.2, prominence=0.2)
     return csd, peaks
 
@@ -88,15 +95,23 @@ def create_evaluation(isotope: Any, csd: Any, peaks: np.ndarray) -> ElementEvalu
     z = int(isotope["z"])
     found_peaks = find_element_peaks(peaks, csd, mass, z)
 
-    m_over_q_found = csd.m_over_q[found_peaks] if csd.m_over_q is not None else np.array([])
-    current_found = csd.beam_current[found_peaks] if csd.beam_current is not None else np.array([])
+    m_over_q_found = (
+        csd.m_over_q[found_peaks] if csd.m_over_q is not None else np.array([])
+    )
+    current_found = (
+        csd.beam_current[found_peaks] if csd.beam_current is not None else np.array([])
+    )
 
     # Identify missing expected peaks within measured range
     missing_m_over_q = []
     missing_current = []
     if csd.m_over_q is not None:
         mq_min, mq_max = csd.m_over_q.min(), csd.m_over_q.max()
-        found_qs = np.round(mass / m_over_q_found).astype(int) if len(m_over_q_found) > 0 else []
+        found_qs = (
+            np.round(mass / m_over_q_found).astype(int)
+            if len(m_over_q_found) > 0
+            else []
+        )
 
         for q in range(1, z + 1):
             mq_expected = mass / q
@@ -127,7 +142,9 @@ def lookup_isotopes(query: str, isotopes_df: pd.DataFrame) -> Any:
         symbol = parts[0].capitalize()
         try:
             mass_num = int(parts[1])
-            return isotopes_df[(isotopes_df["s"] == symbol) & (isotopes_df.index == mass_num)]
+            return isotopes_df[
+                (isotopes_df["s"] == symbol) & (isotopes_df.index == mass_num)
+            ]
         except (ValueError, IndexError):
             return isotopes_df[0:0]
     else:

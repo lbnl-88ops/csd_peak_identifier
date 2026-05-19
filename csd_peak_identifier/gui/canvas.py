@@ -1,12 +1,22 @@
 from collections import deque
 from itertools import product
-from matplotlib.backends.backend_qtagg import FigureCanvasQTAgg as FigureCanvas, NavigationToolbar2QT as NavigationToolbar
+from matplotlib.backends.backend_qtagg import (
+    FigureCanvasQTAgg as FigureCanvas,
+    NavigationToolbar2QT as NavigationToolbar,
+)
 from matplotlib.figure import Figure
 from matplotlib.ticker import MultipleLocator
 from csd_peak_identifier.gui.constants import (
-    COLOR_BG, COLOR_PLOT_BG, COLOR_TARGET, COLOR_CANDIDATE, 
-    COLOR_TEXT, MARKERS, SHADES, COLOR_GRID
+    COLOR_BG,
+    COLOR_PLOT_BG,
+    COLOR_TARGET,
+    COLOR_CANDIDATE,
+    COLOR_TEXT,
+    MARKERS,
+    SHADES,
+    COLOR_GRID,
 )
+
 
 class MqPlotCanvas(FigureCanvas):
     def __init__(self, parent=None):
@@ -43,7 +53,7 @@ class MqPlotCanvas(FigureCanvas):
             self.axes.plot(
                 csd.m_over_q,
                 csd.beam_current,
-                ":",
+                ".:",
                 color="black",
                 alpha=0.4,
                 label="CSD",
