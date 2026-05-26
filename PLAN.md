@@ -52,3 +52,10 @@
 - [x] Persist the "last used" operator via `QSettings` and database timestamps
 - [x] Integrate login flow into application startup
 - [x] Add "File > Switch Operator..." for on-the-fly profile changes
+
+## Phase 8: Evaluation Saving (COMPLETED)
+- [x] Extend `profiles.db` with `evaluations` and `evaluation_isotopes` tables
+- [x] Implement `save_evaluation` method in `DatabaseManager`
+- [x] Add "File > Save Evaluation" (Ctrl+S) to the main menu
+- [x] Implement `save_current_evaluation` in the `Coordinator` to persist analysis results
+- [x] Provide visual feedback via the status bar upon successful save

@@ -24,6 +24,41 @@ class DatabaseManager:
                 last_used TIMESTAMP
             )
         ''')
+
+        # Table for evaluations
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS evaluations (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                operator_id INTEGER,
+                csd_timestamp TEXT NOT NULL,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (operator_id) REFERENCES users (id)
+            )
+        ''')
+
+        # Table for identified isotopes within an evaluation
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS evaluation_isotopes (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                evaluation_id INTEGER,
+                symbol TEXT NOT NULL,
+                s TEXT,
+                m INTEGER,
+                z INTEGER,
+                status TEXT NOT NULL, -- 'identified' or 'maybe'
+                FOREIGN KEY (evaluation_id) REFERENCES evaluations (id)
+            )
+        ''')
+        
+        # Migration: Add columns if they don't exist (for existing databases)
+        cursor.execute("PRAGMA table_info(evaluation_isotopes)")
+        columns = [column[1] for column in cursor.fetchall()]
+        if "s" not in columns:
+            cursor.execute("ALTER TABLE evaluation_isotopes ADD COLUMN s TEXT")
+        if "m" not in columns:
+            cursor.execute("ALTER TABLE evaluation_isotopes ADD COLUMN m INTEGER")
+        if "z" not in columns:
+            cursor.execute("ALTER TABLE evaluation_isotopes ADD COLUMN z INTEGER")
         
         conn.commit()
         conn.close()
@@ -67,3 +102,47 @@ class DatabaseManager:
         cursor.execute("DELETE FROM users WHERE username = ?", (username,))
         conn.commit()
         conn.close()
+
+    def save_evaluation(self, username, csd_timestamp, isotopes):
+        """
+        Saves an evaluation to the database.
+        isotopes: list of tuples (symbol, s, m, z, status)
+        """
+        conn = sqlite3.connect(self.db_path)
+        cursor = conn.cursor()
+        try:
+            # Get user ID
+            cursor.execute("SELECT id FROM users WHERE username = ?", (username,))
+            user_row = cursor.fetchone()
+            if not user_row:
+                return False
+            user_id = user_row[0]
+
+            # Insert evaluation
+            cursor.execute(
+                "INSERT INTO evaluations (operator_id, csd_timestamp) VALUES (?, ?)",
+                (user_id, csd_timestamp)
+            )
+            eval_id = cursor.lastrowid
+
+            # Insert isotopes
+            for iso in isotopes:
+                # Ensure we handle both old 2-tuple and new 5-tuple formats during transition
+                if len(iso) == 5:
+                    symbol, s, m, z, status = iso
+                else:
+                    symbol, status = iso
+                    s, m, z = None, None, None
+
+                cursor.execute(
+                    "INSERT INTO evaluation_isotopes (evaluation_id, symbol, s, m, z, status) VALUES (?, ?, ?, ?, ?, ?)",
+                    (eval_id, symbol, s, m, z, status)
+                )
+
+            conn.commit()
+            return True
+        except sqlite3.Error as e:
+            print(f"Database error saving evaluation: {e}")
+            return False
+        finally:
+            conn.close()

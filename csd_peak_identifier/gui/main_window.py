@@ -77,6 +77,13 @@ class CsdPeakIdentifierApp(QMainWindow):
         file_menu.addAction(self.update_action)
         
         file_menu.addSeparator()
+
+        self.save_eval_action = QAction("&Save Evaluation", self)
+        self.save_eval_action.setShortcut("Ctrl+S")
+        self.save_eval_action.triggered.connect(self.save_evaluation)
+        file_menu.addAction(self.save_eval_action)
+        
+        file_menu.addSeparator()
         
         self.exit_action = QAction("E&xit", self)
         self.exit_action.triggered.connect(self.close)
@@ -135,6 +142,11 @@ class CsdPeakIdentifierApp(QMainWindow):
             db.update_last_used(new_username)
             self.settings.setValue("last_username", new_username)
             self.set_username(new_username)
+
+    def save_evaluation(self):
+        if not self.coordinator:
+            return
+        self.coordinator.save_current_evaluation()
 
     def show_preferences(self):
         dlg = PreferencesDialog(self)

@@ -5,7 +5,7 @@ from typing import List, Any, Optional
 
 from PySide6.QtCore import Qt, QObject
 from PySide6.QtGui import QColor, QFont
-from PySide6.QtWidgets import QMainWindow, QListWidgetItem, QDialog, QInputDialog
+from PySide6.QtWidgets import QMainWindow, QListWidgetItem, QDialog, QInputDialog, QMessageBox
 
 from csd_peak_identifier.files.csd_file import CSDFile
 from csd_peak_identifier.logic import (
@@ -32,6 +32,7 @@ from csd_peak_identifier.gui.panels import IsotopePanel, PeakPanel, InfoPanel
 from csd_peak_identifier.gui.canvas import MqPlotCanvas
 from csd_peak_identifier.gui.open_dialog import CsdOpenDialog
 from csd_peak_identifier.files.client import download_filepair
+from csd_peak_identifier.utils.database import DatabaseManager
 
 
 class Coordinator(QObject):
@@ -582,3 +583,31 @@ class Coordinator(QObject):
             sb.showMessage(f"Successfully loaded {csd_filename}", 3000)
         except Exception as e:
             sb.showMessage(f"Error loading file: {str(e)}", 5000)
+
+    def save_current_evaluation(self):
+        if not self.csd_file:
+            QMessageBox.warning(self._main_window, "SAVE ERROR", "NO CSD FILE LOADED")
+            return
+
+        username = self._main_window.username
+        timestamp = self.csd_file.timestamp
+        
+        # Collect isotopes with granular data
+        isotopes = []
+        for ev in self.identified:
+            # Ensure we are passing native Python types (str, int) for SQLite
+            isotopes.append((str(ev.symbol()), str(ev.s), int(ev.m), int(ev.z), "identified"))
+        for ev in self.maybe:
+            isotopes.append((str(ev.symbol()), str(ev.s), int(ev.m), int(ev.z), "maybe"))
+
+        if not isotopes:
+            QMessageBox.warning(self._main_window, "SAVE ERROR", "NO ISOTOPES IDENTIFIED")
+            return
+
+        db = DatabaseManager()
+        success = db.save_evaluation(username, timestamp, isotopes)
+        
+        if success:
+            self._main_window.statusBar().showMessage(f"Evaluation for {timestamp} saved successfully.", 5000)
+        else:
+            QMessageBox.critical(self._main_window, "SAVE ERROR", "FAILED TO SAVE EVALUATION TO DATABASE")
