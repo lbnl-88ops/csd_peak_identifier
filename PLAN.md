@@ -59,3 +59,9 @@
 - [x] Add "File > Save Evaluation" (Ctrl+S) to the main menu
 - [x] Implement `save_current_evaluation` in the `Coordinator` to persist analysis results
 - [x] Provide visual feedback via the status bar upon successful save
+
+## Phase 9: Evaluation Mode (COMPLETED)
+- [x] Implement `get_user_stats` and `get_random_pending_timestamp` in `DatabaseManager`
+- [x] Create "Evaluation Status" summary dialog (`EvaluationModeDialog`)
+- [x] Implement "Evaluate pending CSD" and "Evaluate random CSD" logic in `Coordinator`
+- [x] Add "File > Evaluation Mode..." to the main menu

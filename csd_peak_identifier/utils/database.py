@@ -103,6 +103,63 @@ class DatabaseManager:
         conn.commit()
         conn.close()
 
+    def get_user_stats(self, username):
+        """
+        Returns (eval_count, pending_count)
+        eval_count: Unique CSDs evaluated by this user
+        pending_count: Unique CSDs evaluated by others but NOT by this user
+        """
+        conn = sqlite3.connect(self.db_path)
+        cursor = conn.cursor()
+        try:
+            # Get user ID
+            cursor.execute("SELECT id FROM users WHERE username = ?", (username,))
+            user_row = cursor.fetchone()
+            if not user_row:
+                return 0, 0
+            user_id = user_row[0]
+
+            # Count user's evaluations
+            cursor.execute(
+                "SELECT COUNT(DISTINCT csd_timestamp) FROM evaluations WHERE operator_id = ?",
+                (user_id,)
+            )
+            eval_count = cursor.fetchone()[0]
+
+            # Count pending (by others, not by me)
+            cursor.execute("""
+                SELECT COUNT(DISTINCT csd_timestamp) FROM evaluations 
+                WHERE operator_id != ? 
+                AND csd_timestamp NOT IN (SELECT csd_timestamp FROM evaluations WHERE operator_id = ?)
+            """, (user_id, user_id))
+            pending_count = cursor.fetchone()[0]
+
+            return eval_count, pending_count
+        finally:
+            conn.close()
+
+    def get_random_pending_timestamp(self, username):
+        """Returns a random csd_timestamp evaluated by others but not this user."""
+        conn = sqlite3.connect(self.db_path)
+        cursor = conn.cursor()
+        try:
+            cursor.execute("SELECT id FROM users WHERE username = ?", (username,))
+            user_row = cursor.fetchone()
+            if not user_row:
+                return None
+            user_id = user_row[0]
+
+            cursor.execute("""
+                SELECT DISTINCT csd_timestamp FROM evaluations 
+                WHERE operator_id != ? 
+                AND csd_timestamp NOT IN (SELECT csd_timestamp FROM evaluations WHERE operator_id = ?)
+                ORDER BY RANDOM() LIMIT 1
+            """, (user_id, user_id))
+            row = cursor.fetchone()
+            return row[0] if row else None
+        finally:
+            conn.close()
+
     def save_evaluation(self, username, csd_timestamp, isotopes):
         """
         Saves an evaluation to the database.

@@ -1,5 +1,6 @@
 import numpy as np
 import pandas as pd
+import random
 from pathlib import Path
 from typing import List, Any, Optional
 
@@ -31,7 +32,7 @@ from csd_peak_identifier.gui.styles import MODE_INDICATOR_STYLE
 from csd_peak_identifier.gui.panels import IsotopePanel, PeakPanel, InfoPanel
 from csd_peak_identifier.gui.canvas import MqPlotCanvas
 from csd_peak_identifier.gui.open_dialog import CsdOpenDialog
-from csd_peak_identifier.files.client import download_filepair
+from csd_peak_identifier.files.client import download_filepair, get_remote_files
 from csd_peak_identifier.utils.database import DatabaseManager
 
 
@@ -568,6 +569,33 @@ class Coordinator(QObject):
             filename = dialog.get_selected_file()
             if filename:
                 self.download_and_open(filename)
+
+    def open_by_timestamp(self, timestamp):
+        """Finds a remote file matching the timestamp and opens it."""
+        try:
+            remote_files = get_remote_files()
+            for f in remote_files:
+                if f.timestamp == timestamp:
+                    self.download_and_open(f.filename)
+                    return
+            QMessageBox.warning(self._main_window, "OPEN ERROR", f"Could not find remote file for {timestamp}")
+        except Exception as e:
+            QMessageBox.critical(self._main_window, "ERROR", f"Failed to fetch file list: {e}")
+
+    def open_random_csd(self):
+        """Opens a random CSD from the server."""
+        try:
+            remote_files = get_remote_files()
+            if not remote_files:
+                QMessageBox.warning(self._main_window, "OPEN ERROR", "No files found on server.")
+                return
+            
+            # Optional: filter out already evaluated files?
+            # For now, just pick any random one as requested.
+            choice = random.choice(remote_files)
+            self.download_and_open(choice.filename)
+        except Exception as e:
+            QMessageBox.critical(self._main_window, "ERROR", f"Failed to fetch file list: {e}")
 
     def download_and_open(self, csd_filename):
         sb = self._main_window.statusBar()

@@ -17,6 +17,7 @@ from csd_peak_identifier.gui.canvas import MqPlotCanvas, NavigationToolbar
 from csd_peak_identifier.gui.panels import IsotopePanel, PeakPanel, InfoPanel
 from csd_peak_identifier.gui.preferences_dialog import PreferencesDialog
 from csd_peak_identifier.gui.profile_dialog import ProfileDialog
+from csd_peak_identifier.gui.evaluation_mode_dialog import EvaluationModeDialog
 from csd_peak_identifier.utils.updater import check_for_updates
 from csd_peak_identifier.utils.database import DatabaseManager
 
@@ -63,6 +64,12 @@ class CsdPeakIdentifierApp(QMainWindow):
         self.switch_user_action = QAction("&Switch Operator...", self)
         self.switch_user_action.triggered.connect(self.switch_user)
         file_menu.addAction(self.switch_user_action)
+        
+        file_menu.addSeparator()
+
+        self.eval_mode_action = QAction("&Evaluation Mode...", self)
+        self.eval_mode_action.triggered.connect(self.show_evaluation_mode)
+        file_menu.addAction(self.eval_mode_action)
         
         file_menu.addSeparator()
         
@@ -142,6 +149,23 @@ class CsdPeakIdentifierApp(QMainWindow):
             db.update_last_used(new_username)
             self.settings.setValue("last_username", new_username)
             self.set_username(new_username)
+
+    def show_evaluation_mode(self):
+        if not self.coordinator:
+            return
+        
+        db = DatabaseManager()
+        eval_count, pending_count = db.get_user_stats(self.username)
+        
+        dlg = EvaluationModeDialog(self.username, eval_count, pending_count, parent=self)
+        if dlg.exec() == EvaluationModeDialog.Accepted:
+            action = dlg.get_action()
+            if action == 'pending':
+                timestamp = db.get_random_pending_timestamp(self.username)
+                if timestamp:
+                    self.coordinator.open_by_timestamp(timestamp)
+            elif action == 'random':
+                self.coordinator.open_random_csd()
 
     def save_evaluation(self):
         if not self.coordinator:
