@@ -33,16 +33,17 @@ DEFAULT_CSD = DATA_PATH / "csds" / "csd_1762894074"
 # --- Network / Server ---
 API_URL = "http://ecris.lbl.gov:5000"
 
-# Temporary folder handling
-# On Windows, we want to use the User's Local AppData to ensure write permissions
 if sys.platform == "win32":
-    TEMP_FOLDER = Path(os.environ.get("LOCALAPPDATA", os.path.expanduser("~"))) / "CSDPeakIdentifier" / "tmp"
+    APP_DATA_DIR = Path(os.environ.get("LOCALAPPDATA", os.path.expanduser("~"))) / "CSDPeakIdentifier"
 else:
-    # On Linux/macOS, we can stay local to the user home or current dir
-    TEMP_FOLDER = Path.expanduser(Path("~/.cache/csd_peak_identifier/tmp"))
+    APP_DATA_DIR = Path.expanduser(Path("~/.local/share/csd_peak_identifier"))
 
-# Create the folder if it doesn't exist
+TEMP_FOLDER = APP_DATA_DIR / "tmp"
+DB_PATH = APP_DATA_DIR / "profiles.db"
+
+# Create the folders if they don't exist
 try:
+    APP_DATA_DIR.mkdir(parents=True, exist_ok=True)
     TEMP_FOLDER.mkdir(parents=True, exist_ok=True)
 except Exception as e:
     print(f"Warning: Could not create temp folder {TEMP_FOLDER}: {e}")

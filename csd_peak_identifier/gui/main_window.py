@@ -16,7 +16,9 @@ from csd_peak_identifier.gui.styles import (
 from csd_peak_identifier.gui.canvas import MqPlotCanvas, NavigationToolbar
 from csd_peak_identifier.gui.panels import IsotopePanel, PeakPanel, InfoPanel
 from csd_peak_identifier.gui.preferences_dialog import PreferencesDialog
+from csd_peak_identifier.gui.profile_dialog import ProfileDialog
 from csd_peak_identifier.utils.updater import check_for_updates
+from csd_peak_identifier.utils.database import DatabaseManager
 
 class UpdateCheckerThread(QThread):
     finished = Signal(object, object)  # (latest_version, release_url)
@@ -32,6 +34,7 @@ class CsdPeakIdentifierApp(QMainWindow):
         self.resize(1200, 800)
         self.coordinator = None
         self.settings = QSettings("LBNL", "CsdPeakIdentifier")
+        self.username = None
         self.create_widgets()
         
         # Check for updates automatically if enabled
@@ -54,6 +57,12 @@ class CsdPeakIdentifierApp(QMainWindow):
         self.open_action = QAction("&Open...", self)
         self.open_action.setShortcut("Ctrl+O")
         file_menu.addAction(self.open_action)
+        
+        file_menu.addSeparator()
+
+        self.switch_user_action = QAction("&Switch Operator...", self)
+        self.switch_user_action.triggered.connect(self.switch_user)
+        file_menu.addAction(self.switch_user_action)
         
         file_menu.addSeparator()
         
@@ -109,6 +118,23 @@ class CsdPeakIdentifierApp(QMainWindow):
     def set_coordinator(self, coordinator):
         self.coordinator = coordinator
         self.open_action.triggered.connect(self.coordinator.open_csd_dialog)
+
+    def set_username(self, username):
+        self.username = username
+        self.status_bar.showMessage(f"LOGGED IN AS: {self.username}")
+        self.setWindowTitle(f"CSD Peak Identifier (v{VERSION}) - [{self.username}]")
+
+    def switch_user(self):
+        db = DatabaseManager()
+        users = db.get_all_users()
+        
+        dlg = ProfileDialog(users, last_username=self.username, parent=self)
+        if dlg.exec() == ProfileDialog.Accepted:
+            new_username = dlg.get_selected_username()
+            db.add_user(new_username)
+            db.update_last_used(new_username)
+            self.settings.setValue("last_username", new_username)
+            self.set_username(new_username)
 
     def show_preferences(self):
         dlg = PreferencesDialog(self)
