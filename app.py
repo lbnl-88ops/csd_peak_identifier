@@ -14,8 +14,8 @@ def main():
     
     # Set window icon
     icon_path = get_resource_path("icon.png")
-    if os.path.exists(icon_path):
-        app.setWindowIcon(QIcon(icon_path))
+    if icon_path.exists():
+        app.setWindowIcon(QIcon(str(icon_path)))
     
     # Initialize Database and handle Profile Selection
     db = DatabaseManager()

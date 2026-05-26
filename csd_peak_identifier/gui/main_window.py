@@ -122,7 +122,7 @@ class CsdPeakIdentifierApp(QMainWindow):
     def set_username(self, username):
         self.username = username
         self.status_bar.showMessage(f"LOGGED IN AS: {self.username}")
-        self.setWindowTitle(f"CSD Peak Identifier (v{VERSION}) - [{self.username}]")
+        self.setWindowTitle(f"CSD Peak Identifier (v{VERSION}) - ECRIS Access: {self.username}")
 
     def switch_user(self):
         db = DatabaseManager()

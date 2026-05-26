@@ -3,8 +3,8 @@ from PySide6.QtWidgets import (
     QPushButton, QLineEdit, QFormLayout, QFrame, QMessageBox
 )
 from PySide6.QtCore import Qt
-from .constants import FONT_SANS, FONT_MONO, COLOR_BG, COLOR_TEXT, COLOR_GRID, COLOR_ACTION
-from .styles import BUTTON_STYLE, LABEL_STYLE
+from .constants import FONT_SANS, FONT_MONO, COLOR_BG, COLOR_TEXT, COLOR_GRID, COLOR_ACTION, COLOR_MUTED
+from .styles import LABEL_STYLE
 
 class ProfileDialog(QDialog):
     """
@@ -14,7 +14,7 @@ class ProfileDialog(QDialog):
     
     def __init__(self, users, last_username=None, parent=None):
         super().__init__(parent)
-        self.setWindowTitle("USER PROFILE SELECTION")
+        self.setWindowTitle("ECRIS SYSTEM ACCESS")
         self.setFixedWidth(400)
         self.setStyleSheet(f"background-color: {COLOR_BG}; color: {COLOR_TEXT};")
         
@@ -22,29 +22,44 @@ class ProfileDialog(QDialog):
         
         layout = QVBoxLayout(self)
         layout.setSpacing(15)
-        layout.setContentsMargins(20, 20, 20, 20)
+        layout.setContentsMargins(25, 25, 25, 25)
         
-        # Header - tactile feel
-        header = QLabel("SYSTEM ACCESS: PROFILE")
-        header.setStyleSheet(f"font-family: {FONT_SANS}; font-weight: bold; font-size: 14px; color: {COLOR_ACTION};")
-        layout.addWidget(header)
+        # Instructions
+        instr = QLabel("Select existing operator or enter a new designation.")
+        instr.setStyleSheet(f"font-family: {FONT_SANS}; font-size: 11px; color: {COLOR_TEXT}; margin-bottom: 5px;")
+        instr.setWordWrap(True)
+        layout.addWidget(instr)
         
         # Frame for selection
         frame = QFrame()
-        frame.setStyleSheet(f"border: 1px solid {COLOR_GRID}; padding: 10px;")
+        frame.setStyleSheet(f"border: 1px solid {COLOR_GRID}; padding: 15px; background-color: {COLOR_BG};")
         frame_layout = QFormLayout(frame)
+        frame_layout.setVerticalSpacing(10)
         
         self.user_combo = QComboBox()
         self.user_combo.setEditable(True)
+        # Fixed QSS to show a distinct triangle for the arrow
         self.user_combo.setStyleSheet(f"""
             QComboBox {{
                 font-family: {FONT_MONO};
                 background-color: white;
                 border: 1px solid {COLOR_GRID};
-                padding: 4px;
+                padding: 5px;
+                color: {COLOR_TEXT};
             }}
             QComboBox::drop-down {{
+                subcontrol-origin: padding;
+                subcontrol-position: top right;
+                width: 25px;
                 border-left: 1px solid {COLOR_GRID};
+            }}
+            QComboBox::down-arrow {{
+                image: none;
+                width: 0px;
+                height: 0px;
+                border-left: 6px solid transparent;
+                border-right: 6px solid transparent;
+                border-top: 9px solid {COLOR_TEXT};
             }}
         """)
         
@@ -61,33 +76,47 @@ class ProfileDialog(QDialog):
         
         layout.addWidget(frame)
         
-        # Instructions
-        instr = QLabel("Select existing operator or enter a new designation.")
-        instr.setStyleSheet(f"font-family: {FONT_SANS}; font-size: 10px; color: {COLOR_TEXT};")
-        instr.setWordWrap(True)
-        layout.addWidget(instr)
-        
         # Buttons
         btn_layout = QHBoxLayout()
+        btn_layout.setSpacing(10)
+        
+        # Shared tactile button style
+        base_btn_style = f"""
+            QPushButton {{
+                font-family: {FONT_SANS};
+                font-weight: bold;
+                padding: 8px 20px;
+                border: 1px solid {COLOR_GRID};
+            }}
+        """
         
         self.select_btn = QPushButton("LOGIN")
-        self.select_btn.setStyleSheet(f"""
+        self.select_btn.setDefault(True) # Pressing Enter will trigger this
+        self.select_btn.setStyleSheet(base_btn_style + f"""
             QPushButton {{
                 background-color: {COLOR_ACTION};
                 color: white;
-                font-family: {FONT_SANS};
-                font-weight: bold;
-                padding: 6px 15px;
                 border: none;
             }}
             QPushButton:hover {{
                 background-color: #e67e22;
             }}
+            QPushButton:pressed {{
+                background-color: #bf5500;
+            }}
         """)
         self.select_btn.clicked.connect(self.accept)
         
         self.cancel_btn = QPushButton("CANCEL")
-        self.cancel_btn.setStyleSheet(BUTTON_STYLE)
+        self.cancel_btn.setStyleSheet(base_btn_style + f"""
+            QPushButton {{
+                background-color: {COLOR_BG};
+                color: {COLOR_TEXT};
+            }}
+            QPushButton:hover {{
+                background-color: {COLOR_GRID};
+            }}
+        """)
         self.cancel_btn.clicked.connect(self.reject)
         
         btn_layout.addStretch()
