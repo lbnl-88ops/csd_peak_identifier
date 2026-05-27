@@ -129,6 +129,7 @@ class CsdPeakIdentifierApp(QMainWindow):
         center_layout.addWidget(self.mode_label)
 
         self.canvas = MqPlotCanvas(self)
+        self.canvas.zoom_finished.connect(self.auto_deactivate_zoom)
         center_layout.addWidget(self.canvas, 1)
 
         # Plot Controls
@@ -180,6 +181,11 @@ class CsdPeakIdentifierApp(QMainWindow):
                 f"font-family: {FONT_SANS}; font-weight: bold; padding: 5px 15px;"
             )
             self.status_bar.showMessage("ZOOM MODE DEACTIVATED", 2000)
+
+    def auto_deactivate_zoom(self):
+        if self.zoom_btn.isChecked():
+            self.zoom_btn.setChecked(False)
+            self.toggle_zoom_mode()
 
     def reset_plot_view(self):
         self.canvas.reset_view()
