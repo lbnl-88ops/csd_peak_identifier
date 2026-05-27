@@ -17,7 +17,7 @@ def get_resource_path(relative_path):
     return Path(os.path.join(base_path, relative_path))
 
 # --- CONSTANTS ---
-VERSION = "0.2.0"
+VERSION = "0.3.1"
 REPO_OWNER = "lbnl-88ops"
 REPO_NAME = "csd_peak_identifier"
 GITHUB_RELEASES_URL = f"https://api.github.com/repos/{REPO_OWNER}/{REPO_NAME}/releases/latest"
@@ -74,5 +74,5 @@ COLOR_REJECTED = COLOR_MUTED
 MARKERS = ["v", "^", "p", "d", "*", "D"]
 SHADES = ["white", "#f0f0f0", "white"]
 # Preferred font stack for maximum readability and cross-platform consistency.
-FONT_MONO = "Consolas, 'Liberation Mono', Menlo, Monaco, 'DejaVu Sans Mono', monospace"
-FONT_SANS = "'Segoe UI', Roboto, 'Helvetica Neue', Arial, 'Liberation Sans', sans-serif"
+FONT_MONO = "Consolas, Liberation Mono, Menlo, Monaco, DejaVu Sans Mono, monospace"
+FONT_SANS = "Segoe UI, Roboto, Helvetica Neue, Arial, Liberation Sans, sans-serif"

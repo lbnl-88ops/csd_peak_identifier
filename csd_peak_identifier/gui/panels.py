@@ -12,6 +12,8 @@ from csd_peak_identifier.gui.constants import (
     FONT_SANS,
     COLOR_ACTION,
     COLOR_TARGET,
+    COLOR_CANDIDATE,
+    COLOR_TEXT
 )
 from csd_peak_identifier.gui.styles import (
     GROUP_BOX_STYLE,
@@ -136,13 +138,61 @@ class PeakPanel(QGroupBox):
 class InfoPanel(QWidget):
     def __init__(self, parent=None):
         super().__init__(parent)
-        layout = QVBoxLayout(self)
-        layout.setContentsMargins(0, 0, 0, 0)
-        self.label = add_label(layout, "Select a candidate to see details")
-        self.label.setAlignment(Qt.AlignCenter)
-        self.label.setStyleSheet(
-            self.label.styleSheet() + " font-size: 13px; padding: 2px;"
+        self.main_layout = QHBoxLayout(self)
+        self.main_layout.setContentsMargins(20, 2, 20, 2) # Minimal top/bottom padding
+        self.main_layout.setSpacing(15)
+        
+        # Left Side: Candidate Label + Large Icon
+        left_layout = QVBoxLayout()
+        left_layout.setSpacing(0)
+        self.cand_title = add_label(left_layout, "CANDIDATE:")
+        self.cand_title.setStyleSheet(f"font-family: {FONT_SANS}; font-size: 9px; font-weight: bold; color: #666666;")
+        
+        self.isotope_display = add_label(left_layout, "")
+        self.isotope_display.setStyleSheet(
+            f"font-size: 28px; font-weight: bold; font-family: 'monospace'; color: {COLOR_CANDIDATE};"
         )
+        self.main_layout.addLayout(left_layout)
+        
+        # Right Side: Isotope Details
+        self.details_layout = QVBoxLayout()
+        self.details_layout.setSpacing(1)
+        self.details_layout.setAlignment(Qt.AlignVCenter)
+        
+        self.abundance_label = add_label(self.details_layout, "")
+        self.mass_label = add_label(self.details_layout, "")
+        self.score_label = add_label(self.details_layout, "")
+        
+        label_style = f"font-family: 'monospace'; font-size: 11px; color: {COLOR_TEXT};"
+        self.abundance_label.setStyleSheet(label_style)
+        self.mass_label.setStyleSheet(label_style)
+        self.score_label.setStyleSheet(label_style)
+        
+        self.main_layout.addLayout(self.details_layout)
+        self.main_layout.addStretch()
+
+    def set_candidate_data(self, ev, score=0.0):
+        if ev:
+            # Format: 48 Ca +5
+            parts = ev.symbol().split('-')
+            element = parts[0]
+            mass = parts[1] if len(parts) > 1 else ""
+            
+            large_text = f"<sup>{mass}</sup>{element} <sup>+{ev.z}</sup>"
+            self.isotope_display.setText(large_text)
+            
+            self.abundance_label.setText(f"ABUNDANCE: {ev.a:.3f}%")
+            self.mass_label.setText(f"ACTUAL MASS: {ev.m:.5f} u")
+            self.score_label.setText(f"MATCH SCORE: {score * 100:.1f}%")
+            
+            self.cand_title.show()
+        else:
+            self.isotope_display.setText("")
+            self.abundance_label.setText("")
+            self.mass_label.setText("")
+            self.score_label.setText("Select a candidate to see details")
+            self.cand_title.hide()
 
     def setText(self, text):
-        self.label.setText(text)
+        # Kept for compatibility but not used in current layout
+        pass

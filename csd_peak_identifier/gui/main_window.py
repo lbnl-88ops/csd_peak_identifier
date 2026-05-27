@@ -68,6 +68,8 @@ class CsdPeakIdentifierApp(QMainWindow):
         central_widget = QWidget()
         self.setCentralWidget(central_widget)
         main_layout = QHBoxLayout(central_widget)
+        main_layout.setContentsMargins(5, 5, 5, 5) # Reduced margins to maximize plot area
+        main_layout.setSpacing(5)
 
         # Menu Bar
         self.menu_bar = self.menuBar()
@@ -132,6 +134,7 @@ class CsdPeakIdentifierApp(QMainWindow):
 
         # Center Area (Plot)
         center_layout = QVBoxLayout()
+        center_layout.setSpacing(2) # Tighter spacing to maximize plot area
         
         self.mode_label = add_label(center_layout, "MODE: PEAK SELECTION")
         self.mode_label.setStyleSheet(
@@ -143,6 +146,17 @@ class CsdPeakIdentifierApp(QMainWindow):
         self.canvas = MqPlotCanvas(self)
         self.canvas.zoom_finished.connect(self.auto_deactivate_zoom)
         center_layout.addWidget(self.canvas, 1)
+
+        self.timestamp_label = QLabel("")
+        self.timestamp_label.setStyleSheet(f"font-family: 'monospace'; font-size: 11px; color: {COLOR_MUTED}; margin-top: 2px;")
+        self.timestamp_label.setAlignment(Qt.AlignCenter)
+        center_layout.addWidget(self.timestamp_label)
+
+        # Plot Controls Help
+        self.help_label = QLabel("SCROLL: ZOOM | RIGHT-CLICK: PAN")
+        self.help_label.setStyleSheet(f"font-family: {FONT_SANS}; font-size: 9px; font-weight: bold; color: {COLOR_MUTED};")
+        self.help_label.setAlignment(Qt.AlignCenter)
+        center_layout.addWidget(self.help_label)
 
         # Plot Controls
         plot_ctrl_layout = QHBoxLayout()
@@ -175,8 +189,8 @@ class CsdPeakIdentifierApp(QMainWindow):
         center_layout.addLayout(plot_ctrl_layout)
 
         self.info_panel = InfoPanel()
-        center_layout.addWidget(self.info_panel, 0)
-        main_layout.addLayout(center_layout, 4)
+        center_layout.insertWidget(1, self.info_panel) # Move to top, above canvas
+        main_layout.addLayout(center_layout, 8) # Increased stretch factor from 4 to 8
 
         # Right Sidebar (Peaks)
         self.peak_panel = PeakPanel()
@@ -323,13 +337,17 @@ class CsdPeakIdentifierApp(QMainWindow):
                 f"You are running the latest version (v{VERSION})."
             )
 
-    def notify_csd_loaded(self, csd_timestamp: str):
+    def notify_csd_loaded(self, csd_timestamp: str, display_name: str = ""):
         """
         Called by the Coordinator after a CSD is successfully loaded.
-        Enables the 'Review Evaluations' menu action.
+        Enables the 'Review Evaluations' menu action and updates the timestamp label.
         """
         self._current_csd_timestamp = csd_timestamp
         self.review_csd_action.setEnabled(True)
+        if display_name:
+            self.timestamp_label.setText(f"LOADED DATA: {display_name}")
+        else:
+            self.timestamp_label.setText(f"LOADED DATA: {csd_timestamp}")
 
     def show_cross_eval_for_current_csd(self):
         """Opens the CrossEvaluationDialog for whichever CSD is currently loaded."""

@@ -26,7 +26,7 @@ class MqPlotCanvas(FigureCanvas):
 
     def __init__(self, parent=None):
         fig = Figure(figsize=(9, 6), facecolor=COLOR_BG)
-        fig.subplots_adjust(top=0.92, bottom=0.12) # Closer fit to top labels
+        fig.subplots_adjust(top=0.88, bottom=0.10, left=0.08, right=0.98) # Tighten margins but allow for labels
         self.axes = fig.add_subplot(111, facecolor=COLOR_PLOT_BG)
         self.axes.set_xlabel("m/q")
         self.axes.set_ylabel(r"Beam Current ($\mu$A)")
