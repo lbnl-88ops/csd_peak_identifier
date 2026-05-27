@@ -1,6 +1,6 @@
 [project]
 name = "csd-peak-identifier"
-version = "0.1.3"
+version = "0.2.0"
 description = "A PySide6 GUI for identifying isotopes in ECR ion beam spectra."
 authors = [
 	{name="Jessica Rehak", email="<rehak@lbl.gov>"}

@@ -17,7 +17,7 @@ def get_resource_path(relative_path):
     return Path(os.path.join(base_path, relative_path))
 
 # --- CONSTANTS ---
-VERSION = "0.1.3"
+VERSION = "0.2.0"
 REPO_OWNER = "lbnl-88ops"
 REPO_NAME = "csd_peak_identifier"
 GITHUB_RELEASES_URL = f"https://api.github.com/repos/{REPO_OWNER}/{REPO_NAME}/releases/latest"
