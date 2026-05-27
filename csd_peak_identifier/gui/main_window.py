@@ -36,11 +36,29 @@ class CsdPeakIdentifierApp(QMainWindow):
         self.coordinator = None
         self.settings = QSettings("LBNL", "CsdPeakIdentifier")
         self.username = None
+        
+        use_remote = self.settings.value("use_remote_db", False, type=bool)
+        self.db = DatabaseManager(use_remote=use_remote)
+        
         self.create_widgets()
+        self.update_db_status()
         
         # Check for updates automatically if enabled
         if self.settings.value("auto_update_check", True, type=bool):
             self.perform_update_check(quiet=True)
+
+    def update_db_status(self):
+        connected = self.db.is_connected_to_remote
+        if self.db.use_remote:
+            if connected:
+                self.db_status_label.setText("DB: REMOTE")
+                self.db_status_label.setStyleSheet("color: green; font-weight: bold; margin-right: 10px;")
+            else:
+                self.db_status_label.setText("DB: REMOTE (OFFLINE)")
+                self.db_status_label.setStyleSheet("color: red; font-weight: bold; margin-right: 10px;")
+        else:
+            self.db_status_label.setText("DB: LOCAL")
+            self.db_status_label.setStyleSheet(f"color: {COLOR_MUTED}; font-weight: bold; margin-right: 10px;")
 
     def create_widgets(self):
         self.setStyleSheet(f"background: {COLOR_BG};" + MENU_STYLE)
@@ -128,6 +146,10 @@ class CsdPeakIdentifierApp(QMainWindow):
         # Status Bar
         self.status_bar = QStatusBar()
         self.setStatusBar(self.status_bar)
+        
+        self.db_status_label = QLabel("DB: LOCAL")
+        self.db_status_label.setStyleSheet(f"font-family: {FONT_SANS}; font-weight: bold; margin-right: 10px;")
+        self.status_bar.addPermanentWidget(self.db_status_label)
 
     def set_coordinator(self, coordinator):
         self.coordinator = coordinator
@@ -139,33 +161,33 @@ class CsdPeakIdentifierApp(QMainWindow):
         self.setWindowTitle(f"CSD Peak Identifier (v{VERSION}) - ECRIS Access: {self.username}")
 
     def switch_user(self):
-        db = DatabaseManager()
-        users = db.get_all_users()
+        users = self.db.get_all_users()
         
         dlg = ProfileDialog(users, last_username=self.username, parent=self)
         if dlg.exec() == ProfileDialog.Accepted:
             new_username = dlg.get_selected_username()
-            db.add_user(new_username)
-            db.update_last_used(new_username)
+            self.db.add_user(new_username)
+            self.db.update_last_used(new_username)
             self.settings.setValue("last_username", new_username)
             self.set_username(new_username)
+            self.update_db_status()
 
     def show_evaluation_mode(self):
         if not self.coordinator:
             return
         
-        db = DatabaseManager()
-        eval_count, pending_count = db.get_user_stats(self.username)
+        eval_count, pending_count = self.db.get_user_stats(self.username)
         
         dlg = EvaluationModeDialog(self.username, eval_count, pending_count, parent=self)
         if dlg.exec() == EvaluationModeDialog.Accepted:
             action = dlg.get_action()
             if action == 'pending':
-                timestamp = db.get_random_pending_timestamp(self.username)
+                timestamp = self.db.get_random_pending_timestamp(self.username)
                 if timestamp:
                     self.coordinator.open_by_timestamp(timestamp)
             elif action == 'random':
                 self.coordinator.open_random_csd()
+            self.update_db_status()
 
     def save_evaluation(self):
         if not self.coordinator:
@@ -174,7 +196,14 @@ class CsdPeakIdentifierApp(QMainWindow):
 
     def show_preferences(self):
         dlg = PreferencesDialog(self)
-        dlg.exec()
+        if dlg.exec() == PreferencesDialog.Accepted:
+            use_remote = self.settings.value("use_remote_db", False, type=bool)
+            if use_remote != self.db.use_remote:
+                self.db = DatabaseManager(use_remote=use_remote)
+                self.update_db_status()
+                # Re-attach to coordinator if necessary
+                if self.coordinator:
+                    self.coordinator.db = self.db
 
     def perform_update_check(self, quiet=False):
         self.update_thread = UpdateCheckerThread(self)

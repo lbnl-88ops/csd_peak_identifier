@@ -41,7 +41,8 @@ def main():
     window.show()
     
     # 3. Handle Welcome flow
-    db = DatabaseManager()
+    use_remote = settings.value("use_remote_db", False, type=bool)
+    db = DatabaseManager(use_remote=use_remote)
     users = db.get_all_users()
     last_user = settings.value("last_username", "")
     

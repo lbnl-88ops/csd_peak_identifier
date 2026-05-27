@@ -20,6 +20,10 @@ class PreferencesDialog(QDialog):
         self.auto_update_cb.setChecked(self.settings.value("auto_update_check", True, type=bool))
         layout.addWidget(self.auto_update_cb)
 
+        self.use_remote_cb = QCheckBox("Use remote shared database (VPN required)")
+        self.use_remote_cb.setChecked(self.settings.value("use_remote_db", False, type=bool))
+        layout.addWidget(self.use_remote_cb)
+
         layout.addStretch()
 
         btn_layout = QHBoxLayout()
@@ -34,4 +38,5 @@ class PreferencesDialog(QDialog):
 
     def save_settings(self):
         self.settings.setValue("auto_update_check", self.auto_update_cb.isChecked())
+        self.settings.setValue("use_remote_db", self.use_remote_cb.isChecked())
         self.accept()

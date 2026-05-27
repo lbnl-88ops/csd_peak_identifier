@@ -2,13 +2,32 @@ import sqlite3
 import os
 from datetime import datetime
 from ..gui.constants import DB_PATH
+from .remote_db import RemoteDatabaseBackend
 
 class DatabaseManager:
-    """Manages local SQLite database for user profiles."""
+    """
+    Manages database operations with automatic remote/local dispatch.
+    Always tries remote first if enabled, falls back to local SQLite.
+    """
     
-    def __init__(self, db_path=DB_PATH):
+    def __init__(self, db_path=DB_PATH, use_remote=False):
         self.db_path = db_path
+        self.remote = RemoteDatabaseBackend()
+        self.use_remote = use_remote
+        self.is_connected_to_remote = False
         self._initialize_db()
+        self.check_connection()
+
+    def check_connection(self):
+        """Checks if the remote server is reachable."""
+        if not self.use_remote:
+            self.is_connected_to_remote = False
+            return False
+            
+        # A simple check: try to get users
+        users = self.remote.get_all_users()
+        self.is_connected_to_remote = (users is not None)
+        return self.is_connected_to_remote
 
     def _initialize_db(self):
         """Creates the database and necessary tables if they don't exist."""
@@ -65,6 +84,13 @@ class DatabaseManager:
 
     def get_all_users(self):
         """Returns a list of all usernames, sorted by last used date."""
+        if self.use_remote:
+            users = self.remote.get_all_users()
+            if users is not None:
+                self.is_connected_to_remote = True
+                return users
+            self.is_connected_to_remote = False
+
         conn = sqlite3.connect(self.db_path)
         cursor = conn.cursor()
         cursor.execute("SELECT username FROM users ORDER BY last_used DESC, username ASC")
@@ -74,6 +100,13 @@ class DatabaseManager:
 
     def add_user(self, username):
         """Adds a new user to the database."""
+        if self.use_remote:
+            result = self.remote.add_user(username)
+            if result is not None:
+                self.is_connected_to_remote = True
+                return result
+            self.is_connected_to_remote = False
+
         conn = sqlite3.connect(self.db_path)
         cursor = conn.cursor()
         try:
@@ -86,6 +119,13 @@ class DatabaseManager:
 
     def update_last_used(self, username):
         """Updates the last_used timestamp for a specific user."""
+        if self.use_remote:
+            result = self.remote.update_last_used(username)
+            if result is not None:
+                self.is_connected_to_remote = True
+                return result
+            self.is_connected_to_remote = False
+
         conn = sqlite3.connect(self.db_path)
         cursor = conn.cursor()
         cursor.execute(
@@ -109,6 +149,13 @@ class DatabaseManager:
         eval_count: Unique CSDs evaluated by this user
         pending_count: Unique CSDs evaluated by others but NOT by this user
         """
+        if self.use_remote:
+            stats = self.remote.get_user_stats(username)
+            if stats != (0, 0) or self.remote._get("users") is not None:
+                self.is_connected_to_remote = True
+                return stats
+            self.is_connected_to_remote = False
+
         conn = sqlite3.connect(self.db_path)
         cursor = conn.cursor()
         try:
@@ -142,6 +189,13 @@ class DatabaseManager:
 
     def get_random_pending_timestamp(self, username):
         """Returns a random csd_timestamp evaluated by others but not this user."""
+        if self.use_remote:
+            ts = self.remote.get_random_pending_timestamp(username)
+            if ts is not None or self.remote._get("users") is not None:
+                self.is_connected_to_remote = True
+                return ts
+            self.is_connected_to_remote = False
+
         conn = sqlite3.connect(self.db_path)
         cursor = conn.cursor()
         try:
@@ -170,6 +224,13 @@ class DatabaseManager:
         Saves an evaluation to the database.
         isotopes: list of tuples (symbol, s, m, z, status)
         """
+        if self.use_remote:
+            result = self.remote.save_evaluation(username, csd_timestamp, isotopes)
+            if result is not None:
+                self.is_connected_to_remote = True
+                return result
+            self.is_connected_to_remote = False
+
         conn = sqlite3.connect(self.db_path)
         cursor = conn.cursor()
         try:

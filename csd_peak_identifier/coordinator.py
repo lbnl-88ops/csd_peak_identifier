@@ -632,8 +632,7 @@ class Coordinator(QObject):
             QMessageBox.warning(self._main_window, "SAVE ERROR", "NO ISOTOPES IDENTIFIED")
             return
 
-        db = DatabaseManager()
-        success = db.save_evaluation(username, timestamp, isotopes)
+        success = self._main_window.db.save_evaluation(username, timestamp, isotopes)
         
         if success:
             self._main_window.statusBar().showMessage(f"Evaluation for {timestamp} saved successfully.", 5000)
