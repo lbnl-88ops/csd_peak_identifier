@@ -29,6 +29,11 @@ class DatabaseManager:
         self.is_connected_to_remote = (users is not None)
         return self.is_connected_to_remote
 
+    def toggle_remote(self, use_remote: bool):
+        """Toggles remote mode and updates connection status."""
+        self.use_remote = use_remote
+        return self.check_connection()
+
     def _initialize_db(self):
         """Creates the database and necessary tables if they don't exist."""
         conn = sqlite3.connect(self.db_path)

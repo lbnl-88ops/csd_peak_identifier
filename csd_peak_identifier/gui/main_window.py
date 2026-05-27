@@ -199,11 +199,8 @@ class CsdPeakIdentifierApp(QMainWindow):
         if dlg.exec() == PreferencesDialog.Accepted:
             use_remote = self.settings.value("use_remote_db", False, type=bool)
             if use_remote != self.db.use_remote:
-                self.db = DatabaseManager(use_remote=use_remote)
+                self.db.toggle_remote(use_remote)
                 self.update_db_status()
-                # Re-attach to coordinator if necessary
-                if self.coordinator:
-                    self.coordinator.db = self.db
 
     def perform_update_check(self, quiet=False):
         self.update_thread = UpdateCheckerThread(self)

@@ -8,6 +8,7 @@ from PySide6.QtWidgets import (
     QFrame,
     QMessageBox,
     QFormLayout,
+    QCheckBox,
 )
 from PySide6.QtCore import Qt
 from .constants import (
@@ -94,6 +95,14 @@ class WelcomeDialog(QDialog):
         user_label = QLabel("OPERATOR ID:")
         user_label.setStyleSheet(LABEL_STYLE)
         user_layout.addRow(user_label, self.user_combo)
+        
+        # Remote Toggle in User Frame
+        self.remote_cb = QCheckBox("USE REMOTE SHARED DATABASE")
+        self.remote_cb.setStyleSheet(f"font-family: {FONT_SANS}; font-size: 11px; color: {COLOR_TEXT}; margin-top: 5px;")
+        self.remote_cb.setChecked(self.db.use_remote)
+        self.remote_cb.toggled.connect(self.on_remote_toggled)
+        user_layout.addRow("", self.remote_cb)
+        
         layout.addWidget(user_frame)
 
         # Stats Section
@@ -171,6 +180,17 @@ class WelcomeDialog(QDialog):
         # Initial stats
         self.update_stats()
 
+    def on_remote_toggled(self, checked):
+        self.db.toggle_remote(checked)
+        # Refresh the user list in the combo
+        current_text = self.user_combo.currentText()
+        self.user_combo.blockSignals(True)
+        self.user_combo.clear()
+        self.user_combo.addItems(self.db.get_all_users())
+        self.user_combo.setCurrentText(current_text)
+        self.user_combo.blockSignals(False)
+        self.update_stats()
+
     def update_stats(self):
         username = self.user_combo.currentText().strip()
         if not username:
@@ -208,4 +228,4 @@ class WelcomeDialog(QDialog):
         return True
 
     def get_action_details(self):
-        return self.selected_username, self.action
+        return self.selected_username, self.action, self.remote_cb.isChecked()

@@ -41,8 +41,8 @@ def main():
     window.show()
     
     # 3. Handle Welcome flow
-    use_remote = settings.value("use_remote_db", False, type=bool)
-    db = DatabaseManager(use_remote=use_remote)
+    # Use the database manager already initialized in the main window
+    db = window.db
     users = db.get_all_users()
     last_user = settings.value("last_username", "")
     
@@ -50,11 +50,13 @@ def main():
     if welcome_dlg.exec() != QDialog.Accepted:
         sys.exit(0)
         
-    username, action = welcome_dlg.get_action_details()
+    username, action, use_remote = welcome_dlg.get_action_details()
     db.add_user(username)
     db.update_last_used(username)
     settings.setValue("last_username", username)
+    settings.setValue("use_remote_db", use_remote)
     window.set_username(username)
+    window.update_db_status() # Update status bar to match final state
     
     # 4. Execute Quick Start action
     if action == 'open':
