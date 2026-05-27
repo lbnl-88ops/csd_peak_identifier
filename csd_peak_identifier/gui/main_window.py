@@ -8,7 +8,7 @@ from PySide6.QtCore import Qt, QSettings, QThread, Signal
 from PySide6.QtGui import QAction
 
 from csd_peak_identifier.gui.constants import (
-    COLOR_BG, COLOR_MUTED, FONT_SANS, VERSION, GITHUB_PAGE_URL
+    COLOR_BG, COLOR_MUTED, FONT_SANS, VERSION, GITHUB_PAGE_URL, COLOR_ACTION
 )
 from csd_peak_identifier.gui.styles import (
     MODE_INDICATOR_STYLE, MENU_STYLE, add_label
