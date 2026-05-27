@@ -76,3 +76,17 @@
 - [x] Add color-coded DB status indicator to the main window status bar
 - [x] Configure server-side persistence path in `systemd` environment file
 - [x] Standardize absolute imports for cross-module reliability
+
+## Phase 11: Documentation and User Education (COMPLETED)
+- [x] Draft a comprehensive User Guide in Markdown
+- [x] Explain "Cassette Futurism" UI elements and tactile controls
+- [x] Document hotkeys (A, M, N, Esc) and Identification Mode workflow
+- [x] Provide instructions for Profile management and Shared Database use
+- [x] Include a "Troubleshooting" section for VPN/Remote issues
+
+## Phase 12: Cross-Evaluation Analysis and Comparison (COMPLETED)
+- [x] Research requirements for cross-operator evaluation comparison
+- [x] Design an "Evaluation Review" or "Consensus" view
+- [x] Implement logic to pull and overlay multiple evaluations for the same CSD
+- [x] Visualize agreement/disagreement between researchers (e.g., color-coded isotopes)
+- [x] Add an "Analysis Dashboard" for lab-wide progress tracking

@@ -18,6 +18,7 @@ from csd_peak_identifier.gui.panels import IsotopePanel, PeakPanel, InfoPanel
 from csd_peak_identifier.gui.preferences_dialog import PreferencesDialog
 from csd_peak_identifier.gui.profile_dialog import ProfileDialog
 from csd_peak_identifier.gui.evaluation_mode_dialog import EvaluationModeDialog
+from csd_peak_identifier.gui.analysis_dashboard import AnalysisDashboard
 from csd_peak_identifier.utils.updater import check_for_updates
 from csd_peak_identifier.utils.database import DatabaseManager
 
@@ -88,7 +89,18 @@ class CsdPeakIdentifierApp(QMainWindow):
         self.eval_mode_action = QAction("&Evaluation Mode...", self)
         self.eval_mode_action.triggered.connect(self.show_evaluation_mode)
         file_menu.addAction(self.eval_mode_action)
-        
+
+        file_menu.addSeparator()
+
+        self.review_csd_action = QAction("&Review Evaluations for this CSD...", self)
+        self.review_csd_action.setEnabled(False)   # enabled once a CSD is loaded
+        self.review_csd_action.triggered.connect(self.show_cross_eval_for_current_csd)
+        file_menu.addAction(self.review_csd_action)
+
+        self.dashboard_action = QAction("&Analysis Dashboard...", self)
+        self.dashboard_action.triggered.connect(self.show_analysis_dashboard)
+        file_menu.addAction(self.dashboard_action)
+
         file_menu.addSeparator()
         
         self.prefs_action = QAction("&Preferences...", self)
@@ -268,6 +280,40 @@ class CsdPeakIdentifierApp(QMainWindow):
                 "No Updates Found",
                 f"You are running the latest version (v{VERSION})."
             )
+
+    def notify_csd_loaded(self, csd_timestamp: str):
+        """
+        Called by the Coordinator after a CSD is successfully loaded.
+        Enables the 'Review Evaluations' menu action.
+        """
+        self._current_csd_timestamp = csd_timestamp
+        self.review_csd_action.setEnabled(True)
+
+    def show_cross_eval_for_current_csd(self):
+        """Opens the CrossEvaluationDialog for whichever CSD is currently loaded."""
+        ts = getattr(self, "_current_csd_timestamp", None)
+        if not ts:
+            return
+        from csd_peak_identifier.gui.cross_eval_dialog import CrossEvaluationDialog
+        evaluations = self.db.get_all_evaluations_for_csd(ts)
+        dlg = CrossEvaluationDialog(ts, evaluations, parent=self)
+        dlg.load_requested.connect(self._handle_load_from_cross_eval)
+        dlg.exec()
+
+    def show_analysis_dashboard(self):
+        """Opens the lab-wide Analysis Dashboard dialog."""
+        dlg = AnalysisDashboard(self.db, parent=self)
+        dlg.load_csd_requested.connect(self._handle_load_from_cross_eval)
+        dlg.exec()
+
+    def _handle_load_from_cross_eval(self, csd_timestamp: str):
+        """
+        Triggered when the user clicks 'LOAD IN MAIN PLOT' inside a
+        CrossEvaluationDialog (directly or forwarded from the dashboard).
+        Delegates to the coordinator to locate and open the file.
+        """
+        if self.coordinator:
+            self.coordinator.open_by_timestamp(csd_timestamp)
 
     def keyPressEvent(self, event):
         if not self.coordinator:

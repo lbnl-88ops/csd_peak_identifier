@@ -152,6 +152,9 @@ class Coordinator(QObject):
         self.clear_all(update=False)
         self.setup_persistent()
         self.update_view(rebuild=True)
+        # Notify the main window so the 'Review Evaluations' menu action is enabled.
+        if hasattr(self._main_window, "notify_csd_loaded"):
+            self._main_window.notify_csd_loaded(self.csd_file.timestamp)
 
     def setup_persistent(self):
         found = []

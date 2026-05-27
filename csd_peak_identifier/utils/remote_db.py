@@ -61,3 +61,11 @@ class RemoteDatabaseBackend:
             "results": analysis_results
         }
         return self._post("evaluations/save", data)
+
+    def get_all_evaluations_for_csd(self, csd_timestamp):
+        result = self._get("evaluations/all", {"csd_timestamp": csd_timestamp})
+        return result if result is not None else []
+
+    def get_evaluations_summary(self):
+        result = self._get("evaluations/summary")
+        return result if result is not None else []

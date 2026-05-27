@@ -308,3 +308,69 @@ class DatabaseManager:
             return False
         finally:
             conn.close()
+
+    def get_all_evaluations_for_csd(self, csd_timestamp):
+        """
+        Returns all evaluations for a specific CSD.
+        Returns a list of dicts: [{'operator': username, 'isotopes': [(symbol, status, s, m, z), ...]}]
+        """
+        if self.use_remote:
+            evals = self.remote.get_all_evaluations_for_csd(csd_timestamp)
+            if evals is not None or self.remote._get("users") is not None:
+                self.is_connected_to_remote = True
+                return evals or []
+            self.is_connected_to_remote = False
+
+        conn = sqlite3.connect(self.db_path)
+        cursor = conn.cursor()
+        try:
+            cursor.execute("""
+                SELECT e.id, u.username
+                FROM evaluations e
+                JOIN users u ON e.operator_id = u.id
+                WHERE e.csd_timestamp = ?
+            """, (csd_timestamp,))
+            eval_rows = cursor.fetchall()
+
+            results = []
+            for eval_id, username in eval_rows:
+                cursor.execute("""
+                    SELECT symbol, status, s, m, z
+                    FROM evaluation_isotopes
+                    WHERE evaluation_id = ?
+                """, (eval_id,))
+                isotopes = cursor.fetchall()
+                results.append({
+                    'operator': username,
+                    'isotopes': isotopes
+                })
+            return results
+        finally:
+            conn.close()
+
+    def get_evaluations_summary(self):
+        """
+        Returns a list of all CSDs in the database with at least one evaluation.
+        Returns a list of dicts: [{'csd_timestamp': ts, 'eval_count': count}]
+        """
+        if self.use_remote:
+            summary = self.remote.get_evaluations_summary()
+            if summary is not None or self.remote._get("users") is not None:
+                self.is_connected_to_remote = True
+                return summary or []
+            self.is_connected_to_remote = False
+
+        conn = sqlite3.connect(self.db_path)
+        cursor = conn.cursor()
+        try:
+            cursor.execute("""
+                SELECT csd_timestamp, COUNT(id) as eval_count
+                FROM evaluations
+                GROUP BY csd_timestamp
+                HAVING eval_count >= 1
+                ORDER BY csd_timestamp DESC
+            """)
+            rows = cursor.fetchall()
+            return [{'csd_timestamp': row[0], 'eval_count': row[1]} for row in rows]
+        finally:
+            conn.close()
