@@ -1,9 +1,16 @@
 import sys
-import os
+from pathlib import Path
 from PySide6.QtWidgets import QApplication, QDialog
 from PySide6.QtGui import QIcon
 from PySide6.QtCore import QSettings
+
+# Fix Matplotlib font warnings by setting a clean font preference early
+import matplotlib
+matplotlib.rcParams['font.sans-serif'] = ['Segoe UI', 'Roboto', 'Helvetica Neue', 'Arial', 'Liberation Sans', 'sans-serif']
+matplotlib.rcParams['font.family'] = 'sans-serif'
+
 from csd_peak_identifier.gui.main_window import CsdPeakIdentifierApp
+
 from csd_peak_identifier.gui.welcome_dialog import WelcomeDialog
 from csd_peak_identifier.coordinator import Coordinator
 from csd_peak_identifier.gui.constants import DEFAULT_CSD, get_resource_path

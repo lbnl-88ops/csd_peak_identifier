@@ -26,7 +26,8 @@ class MqPlotCanvas(FigureCanvas):
 
     def __init__(self, parent=None):
         fig = Figure(figsize=(9, 6), facecolor=COLOR_BG)
-        fig.subplots_adjust(top=0.88, bottom=0.10, left=0.08, right=0.98) # Tighten margins but allow for labels
+        # Tight margins to maximize plot area, leaving room for the secondary q-ruler at top
+        fig.subplots_adjust(top=0.88, bottom=0.08, left=0.06, right=0.98) 
         self.axes = fig.add_subplot(111, facecolor=COLOR_PLOT_BG)
         self.axes.set_xlabel("m/q")
         self.axes.set_ylabel(r"Beam Current ($\mu$A)")
@@ -36,6 +37,8 @@ class MqPlotCanvas(FigureCanvas):
         super().__init__(fig)
         self.setParent(parent)
         self.on_mq_clicked = None
+        
+        self._secax = None
         self.mpl_connect("button_press_event", self._on_button_press)
         self.mpl_connect("button_release_event", self._on_button_release)
         self.mpl_connect("motion_notify_event", self._on_mouse_move)
@@ -208,6 +211,14 @@ class MqPlotCanvas(FigureCanvas):
                 artist.remove()
             if self.axes.get_legend() is not None:
                 self.axes.get_legend().remove()
+            
+            # Remove previous secondary axis if it exists
+            if self._secax:
+                try:
+                    self._secax.remove()
+                except Exception:
+                    pass
+                self._secax = None
                 
             # Temporarily enable autoscale so the new data can define the base bounds
             self.axes.set_autoscalex_on(True)
@@ -307,44 +318,47 @@ class MqPlotCanvas(FigureCanvas):
                 if candidate or target:
                     self.axes.set_ylim(y_min, y_max + 0.15 * y_range)
 
-            # NOW plot the q-state ruler based on ACTUAL current limits to ensure clipping
-            vis_x_min, vis_x_max = self.axes.get_xlim()
+            # NOW plot the q-state ruler as a secondary axis
             if candidate:
-                # Indicator for what the numbers represent
-                self.axes.text(
-                    0.0, 1.05, "CHARGE STATES (q):",
+                from matplotlib.patches import Rectangle
+                # Add a white background rectangle for the "ruler" area
+                # Height reduced to 0.07 for a sleeker profile
+                ruler_bg = Rectangle(
+                    (0, 1.0), 1, 0.07, 
                     transform=self.axes.transAxes,
-                    color="#666666",
-                    fontsize=8,
-                    fontweight="bold",
-                    fontfamily="sans-serif",
-                    va="bottom",
-                    ha="left"
+                    facecolor="white", 
+                    edgecolor=COLOR_GRID, 
+                    linewidth=0.5,
+                    clip_on=False,
+                    zorder=10
                 )
+                self.axes.add_patch(ruler_bg)
 
+                # Create a secondary x-axis pinned to the top
+                self._secax = self.axes.secondary_xaxis('top', functions=(lambda x: x, lambda x: x))
+                
+                q_mq_values = []
+                q_labels = []
                 for q in range(1, candidate.z + 1):
                     mq_exp = candidate.m / q
-                    # Tight clipping to the viewport
-                    if mq_exp < vis_x_min or mq_exp > vis_x_max:
-                        continue
-                        
-                    self.axes.axvline(
-                        mq_exp, ls="--", color=COLOR_CANDIDATE, alpha=0.4, lw=1
-                    )
-                    # "Ruler" style labels: anchored ABOVE the axes, rotated for density
-                    self.axes.text(
-                        mq_exp,
-                        1.02, # Positioned above the axes boundary (1.0)
-                        str(q),
-                        color=COLOR_TEXT,
-                        ha="center",
-                        va="bottom",
-                        fontsize=9,
-                        fontweight="bold",
-                        fontfamily="monospace",
-                        transform=self.axes.get_xaxis_transform(), # X is data, Y is 0.0-1.0 (axes)
-                        rotation=90
-                    )
+                    q_mq_values.append(mq_exp)
+                    q_labels.append(str(q))
+                    
+                    # Also keep the vertical guide lines
+                    vis_x_min, vis_x_max = self.axes.get_xlim()
+                    if mq_exp >= vis_x_min and mq_exp <= vis_x_max:
+                        self.axes.axvline(
+                            mq_exp, ls="--", color=COLOR_CANDIDATE, alpha=0.3, lw=0.8
+                        )
+
+                self._secax.set_xticks(q_mq_values)
+                self._secax.set_xticklabels(q_labels, rotation=90, fontsize=8, fontweight='bold', fontfamily='monospace')
+                self._secax.set_xlabel("q", fontsize=8, fontweight='bold', color='#666666', labelpad=2)
+                
+                # Style the secondary axis to look like a clean ruler
+                self._secax.spines['top'].set_visible(False) 
+                self._secax.tick_params(axis='x', colors=COLOR_TEXT, direction='in', length=3, zorder=11)
+                self._secax.zorder = 11
 
             self.axes.legend(loc="upper right", fontsize="small")
             self.axes.grid(color=COLOR_GRID, ls="--", alpha=0.5)

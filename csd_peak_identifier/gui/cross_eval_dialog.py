@@ -310,7 +310,7 @@ class CrossEvaluationDialog(QDialog):
             cons_cell.setTextAlignment(Qt.AlignCenter)
             cons_cell.setBackground(QColor(_CONSENSUS_BG[consensus_level]))
             cons_cell.setForeground(QColor(_CONSENSUS_FG[consensus_level]))
-            f = QFont(FONT_SANS.split(",")[0].strip().strip("'"))
+            f = QFont(FONT_SANS.split(",")[0].strip())
             f.setBold(True)
             cons_cell.setFont(f)
             table.setItem(row_idx, len(operators), cons_cell)

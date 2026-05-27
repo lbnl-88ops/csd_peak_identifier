@@ -154,7 +154,7 @@ class Coordinator(QObject):
         self.update_view(rebuild=True)
         # Notify the main window so the 'Review Evaluations' menu action is enabled.
         if hasattr(self._main_window, "notify_csd_loaded"):
-            self._main_window.notify_csd_loaded(self.csd_file.timestamp)
+            self._main_window.notify_csd_loaded(self.csd_file.timestamp, self.csd_file.formatted_datetime)
 
     def setup_persistent(self):
         found = []
@@ -209,15 +209,9 @@ class Coordinator(QObject):
 
         if highlight_ev:
             score = highlight_ev.score(self.csd.m_over_q.max()) if self.csd is not None else 0.0
-            self._info_panel.setText(
-                f"<b style='color:{COLOR_INFO}'>Candidate:</b> {highlight_ev.symbol()} | "
-                f"<b>Mass:</b> {highlight_ev.m} | "
-                f"<b>Z:</b> {highlight_ev.z} | "
-                f"<b>Abundance:</b> {highlight_ev.a:.2f}% | "
-                f"<b>Score:</b> {score * 100:.1f}% (Found vs Expected)"
-            )
+            self._info_panel.set_candidate_data(highlight_ev, score)
         else:
-            self._info_panel.setText("Select a candidate to see details")
+            self._info_panel.set_candidate_data(None)
 
         if self._plot:
             title = self.csd_file.formatted_datetime if self.csd_file else None
@@ -303,7 +297,7 @@ class Coordinator(QObject):
         self._peak_panel.peak_list.blockSignals(False)
 
     def handle_peak_click(self, x, y):
-        if self.csd is None:
+        if self.csd is None or self._isotope_panel.button_stack.currentIndex() == 1:
             return
         # Deselect isotope
         self._isotope_panel.eval_list.blockSignals(True)
@@ -321,6 +315,8 @@ class Coordinator(QObject):
         self._peak_panel.peak_list.setFocus()
 
     def handle_peak_list_click(self, item):
+        if self._isotope_panel.button_stack.currentIndex() == 1:
+            return
         # Deselect isotope
         self._isotope_panel.eval_list.blockSignals(True)
         self._isotope_panel.eval_list.clearSelection()
@@ -330,7 +326,7 @@ class Coordinator(QObject):
         self.update_view()
 
     def navigate_peaks(self, direction: int):
-        if self.targeted_mq is None or self.csd is None:
+        if self.targeted_mq is None or self.csd is None or self._isotope_panel.button_stack.currentIndex() == 1:
             return
         mqs = sorted([float(self.csd.m_over_q[p]) for p in self.peaks])
         idx = np.argmin(np.abs(np.array(mqs) - self.targeted_mq))
@@ -441,6 +437,12 @@ class Coordinator(QObject):
         self.candidates.sort(
             key=lambda c: (c.score(self.csd.m_over_q.max()), c.a), reverse=True
         )
+
+        # Disable peak selection while in ID mode to prevent accidental target changes
+        self._peak_panel.peak_list.setEnabled(False)
+        self._saved_click_handler = self._plot.on_mq_clicked
+        self._plot.on_mq_clicked = None
+        
         self._isotope_panel.button_stack.setCurrentIndex(1)  # ID Mode
         self._main_window.mode_label.setText("MODE: PEAK IDENTIFICATION")
         self._main_window.mode_label.setStyleSheet(
@@ -450,12 +452,19 @@ class Coordinator(QObject):
             "Candidate isotopes (sorted by score)"
         )
         self._isotope_panel.eval_list.setEnabled(False)
-        self._peak_panel.peak_list.setEnabled(False)
+        
         self.update_candidate_list()
         self.update_view()
 
     def exit_identification(self):
         self.candidates = []
+        
+        # Re-enable interaction
+        self._peak_panel.peak_list.setEnabled(True)
+        if hasattr(self, "_saved_click_handler"):
+            self._plot.on_mq_clicked = self._saved_click_handler
+            del self._saved_click_handler
+
         self._isotope_panel.button_stack.setCurrentIndex(0)  # Main Mode
         self._main_window.mode_label.setText("MODE: PEAK SELECTION")
         self._main_window.mode_label.setStyleSheet(
@@ -463,7 +472,6 @@ class Coordinator(QObject):
         )
         self._isotope_panel.candidate_header.setText("Candidate isotopes")
         self._isotope_panel.eval_list.setEnabled(True)
-        self._peak_panel.peak_list.setEnabled(True)
         self.update_candidate_list()
         self.update_view()
 
