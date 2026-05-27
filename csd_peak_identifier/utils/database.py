@@ -224,6 +224,29 @@ class DatabaseManager:
         finally:
             conn.close()
 
+    def get_leaderboard(self):
+        """Returns the top 3 evaluators [(username, count), ...]"""
+        if self.use_remote:
+            lb = self.remote.get_leaderboard()
+            if lb is not None or self.remote._get("users") is not None:
+                self.is_connected_to_remote = True
+                return lb
+            self.is_connected_to_remote = False
+
+        conn = sqlite3.connect(self.db_path)
+        cursor = conn.cursor()
+        cursor.execute("""
+            SELECT u.username, COUNT(DISTINCT e.csd_timestamp) as count
+            FROM users u
+            JOIN evaluations e ON u.id = e.operator_id
+            GROUP BY u.username
+            ORDER BY count DESC
+            LIMIT 3
+        """)
+        lb = cursor.fetchall()
+        conn.close()
+        return lb
+
     def save_evaluation(self, username, csd_timestamp, isotopes):
         """
         Saves an evaluation to the database.

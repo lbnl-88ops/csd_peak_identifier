@@ -50,6 +50,10 @@ class RemoteDatabaseBackend:
             return result.get("csd_timestamp")
         return None
 
+    def get_leaderboard(self):
+        result = self._get("leaderboard")
+        return result if result is not None else []
+
     def save_evaluation(self, username, csd_timestamp, analysis_results):
         data = {
             "username": username,

@@ -115,6 +115,13 @@ class WelcomeDialog(QDialog):
 
         # Stats Section
         stats_layout = QVBoxLayout()
+        
+        # Leaderboard
+        self.leaderboard_lbl = QLabel("")
+        self.leaderboard_lbl.setStyleSheet(f"font-family: {FONT_MONO}; font-size: 11px; color: {COLOR_ACTION}; border: 1px dashed {COLOR_GRID}; padding: 10px;")
+        self.leaderboard_lbl.setAlignment(Qt.AlignCenter)
+        stats_layout.addWidget(self.leaderboard_lbl)
+        
         self.stats_lbl = QLabel("Total CSDs evaluated: 0")
         self.stats_lbl.setStyleSheet(
             f"font-family: {FONT_SANS}; font-size: 14px; color: {COLOR_TEXT};"
@@ -213,6 +220,18 @@ class WelcomeDialog(QDialog):
 
     def update_stats(self):
         username = self.user_combo.currentText().strip()
+        
+        # Update Leaderboard
+        lb = self.db.get_leaderboard()
+        if lb:
+            lb_text = "TOP EVALUATORS:\n"
+            for i, (name, count) in enumerate(lb):
+                lb_text += f"{i+1}. {name:15} {count:3}\n"
+            self.leaderboard_lbl.setText(lb_text.strip())
+            self.leaderboard_lbl.show()
+        else:
+            self.leaderboard_lbl.hide()
+
         if not username:
             self.stats_lbl.setText("Total CSDs evaluated: --")
             self.pending_btn.setText("EVALUATE PENDING CSD (0 REMAINING)")
