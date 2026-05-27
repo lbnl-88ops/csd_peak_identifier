@@ -154,6 +154,7 @@ class CsdPeakIdentifierApp(QMainWindow):
     def set_coordinator(self, coordinator):
         self.coordinator = coordinator
         self.open_action.triggered.connect(self.coordinator.open_csd_dialog)
+        self.isotope_panel.save_btn.clicked.connect(self.save_evaluation)
 
     def set_username(self, username):
         self.username = username

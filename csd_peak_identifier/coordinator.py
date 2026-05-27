@@ -373,7 +373,12 @@ class Coordinator(QObject):
             not is_id_mode and self._peak_panel.assoc_list.currentRow() >= 0
         )
 
-        # 6. List deactivation during ID mode
+        # 7. Save Evaluation (Sidebar)
+        self._isotope_panel.save_btn.setEnabled(
+            not is_id_mode and self.csd is not None and (len(self.identified) > 0 or len(self.maybe) > 0)
+        )
+
+        # 8. List deactivation during ID mode
         self._isotope_panel.eval_list.setEnabled(not is_id_mode)
         self._peak_panel.peak_list.setEnabled(not is_id_mode)
         self._peak_panel.assoc_list.setEnabled(not is_id_mode)
@@ -636,5 +641,17 @@ class Coordinator(QObject):
         
         if success:
             self._main_window.statusBar().showMessage(f"Evaluation for {timestamp} saved successfully.", 5000)
+            
+            # Prompt for another review
+            reply = QMessageBox.question(
+                self._main_window,
+                "EVALUATION SAVED",
+                "Evaluation saved successfully.\n\nWould you like to evaluate another CSD?",
+                QMessageBox.Yes | QMessageBox.No,
+                QMessageBox.Yes
+            )
+            
+            if reply == QMessageBox.Yes:
+                self._main_window.show_evaluation_mode()
         else:
             QMessageBox.critical(self._main_window, "SAVE ERROR", "FAILED TO SAVE EVALUATION TO DATABASE")

@@ -83,6 +83,13 @@ class IsotopePanel(QGroupBox):
 
         self.button_stack.addWidget(self.id_btn_panel)
 
+        # Global Save Button
+        self.save_btn = QPushButton("SAVE EVALUATION (Ctrl+S)")
+        self.save_btn.setStyleSheet(
+            f"background: {COLOR_ACTION}; color: white; font-weight: bold; font-family: {FONT_SANS}; padding: 10px; margin-top: 10px;"
+        )
+        layout.addWidget(self.save_btn)
+
 
 class PeakPanel(QGroupBox):
     def __init__(self, parent=None):
