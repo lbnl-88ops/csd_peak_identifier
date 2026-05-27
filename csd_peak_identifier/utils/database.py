@@ -116,7 +116,9 @@ class DatabaseManager:
             cursor.execute("SELECT id FROM users WHERE username = ?", (username,))
             user_row = cursor.fetchone()
             if not user_row:
-                return 0, 0
+                # New user: eval_count is 0, pending is total unique CSDs in DB
+                cursor.execute("SELECT COUNT(DISTINCT csd_timestamp) FROM evaluations")
+                return 0, cursor.fetchone()[0]
             user_id = user_row[0]
 
             # Count user's evaluations
@@ -146,7 +148,10 @@ class DatabaseManager:
             cursor.execute("SELECT id FROM users WHERE username = ?", (username,))
             user_row = cursor.fetchone()
             if not user_row:
-                return None
+                # New user: pick any random unique CSD from evaluations
+                cursor.execute("SELECT DISTINCT csd_timestamp FROM evaluations ORDER BY RANDOM() LIMIT 1")
+                row = cursor.fetchone()
+                return row[0] if row else None
             user_id = user_row[0]
 
             cursor.execute("""
