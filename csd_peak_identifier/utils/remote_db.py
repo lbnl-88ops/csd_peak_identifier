@@ -1,6 +1,6 @@
 import requests
 import json
-from .constants import API_URL
+from ..gui.constants import API_URL
 
 class RemoteDatabaseBackend:
     """
