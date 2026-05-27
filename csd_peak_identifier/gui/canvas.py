@@ -29,6 +29,8 @@ class MqPlotCanvas(FigureCanvas):
         self.axes.set_xlabel("m/q")
         self.axes.set_ylabel(r"Beam Current ($\mu$A)")
         self.axes.xaxis.set_major_locator(MultipleLocator(1.0))
+        self.axes.spines["top"].set_linewidth(0.1)
+        self.axes.spines["right"].set_linewidth(0.1)
         super().__init__(fig)
         self.setParent(parent)
         self.on_mq_clicked = None
@@ -48,6 +50,8 @@ class MqPlotCanvas(FigureCanvas):
         
         self._user_limits = None
         self._updating_view = False
+        
+        # Connect signals for view changes
         self.axes.callbacks.connect('xlim_changed', self._on_view_changed)
         self.axes.callbacks.connect('ylim_changed', self._on_view_changed)
 
@@ -62,10 +66,15 @@ class MqPlotCanvas(FigureCanvas):
 
     def reset_view(self):
         self._user_limits = None
-        self._updating_view = True # Prevent the home() call from saving limits
-        self.toolbar.home()
-        self._updating_view = False
-        self._user_limits = None
+        self._updating_view = True
+        try:
+            # Clear toolbar history to ensure 'home' is a fresh start
+            self.toolbar._views.clear()
+            self.toolbar._positions.clear()
+            self.toolbar.home()
+        finally:
+            self._updating_view = False
+            self._user_limits = None
 
     def _on_click(self, event):
         if event.inaxes == self.axes and event.button == 1 and self.on_mq_clicked:
@@ -76,127 +85,135 @@ class MqPlotCanvas(FigureCanvas):
 
     def redraw(self, csd, identified, candidate=None, target=None, title=None):
         self._updating_view = True
-        
-        # Capture current autoscale state
-        auto_x = self.axes.get_autoscalex_on()
-        auto_y = self.axes.get_autoscaley_on()
-        
-        self.axes.clear()
-        
-        # Re-apply basic axis settings
-        if title:
-            self.axes.set_title(title, fontfamily="monospace", fontsize=10, loc="left")
-        self.axes.set_xlabel("m/q")
-        self.axes.set_ylabel(r"Beam Current ($\mu$A)")
-        self.axes.xaxis.set_major_locator(MultipleLocator(1.0))
-        self.axes.spines["top"].set_linewidth(0.1)
-        self.axes.spines["right"].set_linewidth(0.1)
-
-        if csd is None:
-            self.axes.grid(color=COLOR_GRID, ls="--", alpha=0.5)
-            self.draw()
-            self._updating_view = False
-            return
-
-        if csd.m_over_q is not None:
-            self.axes.plot(
-                csd.m_over_q,
-                csd.beam_current,
-                ".:",
-                color="black",
-                alpha=0.4,
-                label="CSD",
-            )
-
-        y_min, y_max = self.axes.get_ylim()
-        y_range = max(y_max - y_min, 0.1)
-
-        # Draw target/candidate markers
-        if target and not candidate:
-            self.axes.plot(
-                target.m_over_q,
-                target.current + 0.05 * y_range,
-                "v",
-                color=COLOR_TARGET,
-                markersize=12,
-                label="TARGET",
-            )
-            self.axes.axvline(
-                target.m_over_q[0], color=COLOR_TARGET, ls="-", alpha=0.3, lw=1.5
-            )
-
-        if candidate:
-            self.axes.plot(
-                candidate.m_over_q,
-                candidate.current + 0.05 * y_range,
-                "v",
-                color=COLOR_CANDIDATE,
-                markersize=10,
-                label=f"CAND: {candidate.symbol()}",
-            )
-            for q in range(1, candidate.z + 1):
-                mq_exp = candidate.m / q
-                self.axes.axvline(
-                    mq_exp, ls="--", color=COLOR_CANDIDATE, alpha=0.4, lw=1
-                )
-                self.axes.text(
-                    mq_exp,
-                    y_max + 0.05 * y_range,
-                    str(q),
-                    color=COLOR_CANDIDATE,
-                    ha="center",
-                    fontsize=9,
-                    fontweight="bold",
-                )
-            if len(candidate.missing_m_over_q) > 0:
-                self.axes.plot(
-                    candidate.missing_m_over_q,
-                    candidate.missing_current,
-                    "o",
-                    mfc="none",
-                    mec=COLOR_CANDIDATE,
-                    alpha=0.6,
-                )
-
-        # Draw identified peaks
-        peak_counts, style_cycle = (
-            {},
-            deque([(m, s) for s, m in product(SHADES, MARKERS)]),
-        )
-        for ev in identified:
-            m, c = style_cycle[0]
-            cur_off = [
-                cur + peak_counts.setdefault(round(mq, 2), 0) * 0.02 * y_range
-                for mq, cur in zip(ev.m_over_q, ev.current)
-            ]
-            for mq in ev.m_over_q:
-                peak_counts[round(mq, 2)] += 1
-            self.axes.plot(
-                ev.m_over_q,
-                cur_off,
-                m,
-                mfc=c,
-                mec=COLOR_TEXT,
-                label=ev.symbol(),
-            )
-            style_cycle.rotate(-1)
-
-        self.axes.legend(loc="upper right", fontsize="small")
-        self.axes.grid(color=COLOR_GRID, ls="--", alpha=0.5)
-
-        # Apply saved limits if they exist, otherwise use standard auto-scaling
-        if self._user_limits:
-            self.axes.set_xlim(self._user_limits[0])
-            self.axes.set_ylim(self._user_limits[1])
-            self.axes.set_autoscalex_on(False)
-            self.axes.set_autoscaley_on(False)
-        else:
-            # Re-enable autoscale for a clean state if no user limits
+        try:
+            # Remove artists instead of clearing axes to preserve callbacks and configuration
+            # This is critical for keeping our xlim_changed/ylim_changed connections alive
+            for artist in (list(self.axes.lines) + list(self.axes.collections) + 
+                           list(self.axes.texts) + list(self.axes.patches)):
+                artist.remove()
+            if self.axes.get_legend() is not None:
+                self.axes.get_legend().remove()
+                
+            # Temporarily enable autoscale so the new data can define the base bounds
             self.axes.set_autoscalex_on(True)
             self.axes.set_autoscaley_on(True)
-            # If not zoomed, apply the standard extra headroom for labels
-            if candidate or target:
-                self.axes.set_ylim(y_min, y_max + 0.15 * y_range)
+            
+            # Re-apply title if provided
+            if title:
+                self.axes.set_title(title, fontfamily="monospace", fontsize=10, loc="left")
 
-        self.draw()
-        self._updating_view = False
+            if csd is None:
+                self.axes.grid(color=COLOR_GRID, ls="--", alpha=0.5)
+                self.draw()
+                return
+
+            # Plot main CSD data
+            if csd.m_over_q is not None:
+                self.axes.plot(
+                    csd.m_over_q,
+                    csd.beam_current,
+                    ".:",
+                    color="black",
+                    alpha=0.4,
+                    label="CSD",
+                )
+
+            # Recompute data limits from newly plotted data
+            self.axes.relim()
+            
+            # Calculate standard headroom for markers
+            y_min, y_max = self.axes.get_ylim()
+            y_range = max(y_max - y_min, 0.1)
+
+            # Draw target/candidate markers
+            if target and not candidate:
+                self.axes.plot(
+                    target.m_over_q,
+                    target.current + 0.05 * y_range,
+                    "v",
+                    color=COLOR_TARGET,
+                    markersize=12,
+                    label="TARGET",
+                )
+                self.axes.axvline(
+                    target.m_over_q[0], color=COLOR_TARGET, ls="-", alpha=0.3, lw=1.5
+                )
+
+            if candidate:
+                self.axes.plot(
+                    candidate.m_over_q,
+                    candidate.current + 0.05 * y_range,
+                    "v",
+                    color=COLOR_CANDIDATE,
+                    markersize=10,
+                    label=f"CAND: {candidate.symbol()}",
+                )
+                for q in range(1, candidate.z + 1):
+                    mq_exp = candidate.m / q
+                    self.axes.axvline(
+                        mq_exp, ls="--", color=COLOR_CANDIDATE, alpha=0.4, lw=1
+                    )
+                    self.axes.text(
+                        mq_exp,
+                        y_max + 0.05 * y_range,
+                        str(q),
+                        color=COLOR_CANDIDATE,
+                        ha="center",
+                        fontsize=9,
+                        fontweight="bold",
+                    )
+                if len(candidate.missing_m_over_q) > 0:
+                    self.axes.plot(
+                        candidate.missing_m_over_q,
+                        candidate.missing_current,
+                        "o",
+                        mfc="none",
+                        mec=COLOR_CANDIDATE,
+                        alpha=0.6,
+                    )
+
+            # Draw identified peaks with style cycling
+            peak_counts, style_cycle = (
+                {},
+                deque([(m, s) for s, m in product(SHADES, MARKERS)]),
+            )
+            for ev in identified:
+                m, c = style_cycle[0]
+                cur_off = [
+                    cur + peak_counts.setdefault(round(mq, 2), 0) * 0.02 * y_range
+                    for mq, cur in zip(ev.m_over_q, ev.current)
+                ]
+                for mq in ev.m_over_q:
+                    peak_counts[round(mq, 2)] += 1
+                self.axes.plot(
+                    ev.m_over_q,
+                    cur_off,
+                    m,
+                    mfc=c,
+                    mec=COLOR_TEXT,
+                    label=ev.symbol(),
+                )
+                style_cycle.rotate(-1)
+
+            self.axes.legend(loc="upper right", fontsize="small")
+            self.axes.grid(color=COLOR_GRID, ls="--", alpha=0.5)
+
+            # FINAL STEP: Apply view limits
+            # If the user has a custom zoom, enforce it.
+            # Otherwise, use standard autoscale with headroom.
+            if self._user_limits:
+                self.axes.set_xlim(self._user_limits[0])
+                self.axes.set_ylim(self._user_limits[1])
+                self.axes.set_autoscalex_on(False)
+                self.axes.set_autoscaley_on(False)
+            else:
+                self.axes.autoscale_view()
+                if candidate or target:
+                    self.axes.set_ylim(y_min, y_max + 0.15 * y_range)
+
+            # Synchronize the toolbar's internal view stack
+            self.toolbar.push_current()
+            self.draw()
+
+        finally:
+            self._updating_view = False

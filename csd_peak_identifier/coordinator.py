@@ -146,6 +146,8 @@ class Coordinator(QObject):
     def load_csd(self, csd_file: CSDFile):
         self.csd_file = csd_file
         self.csd, self.peaks = load_and_calibrate_csd(csd_file)
+        if self._plot:
+            self._plot.reset_view()
         self.clear_all()
         self.setup_persistent()
 
