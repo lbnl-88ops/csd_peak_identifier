@@ -16,7 +16,8 @@ from csd_peak_identifier.gui.constants import (
     MARKERS,
     SHADES,
     COLOR_GRID,
-    COLOR_ACTION
+    COLOR_ACTION,
+    FONT_SANS
 )
 
 
@@ -25,6 +26,7 @@ class MqPlotCanvas(FigureCanvas):
 
     def __init__(self, parent=None):
         fig = Figure(figsize=(9, 6), facecolor=COLOR_BG)
+        fig.subplots_adjust(top=0.92, bottom=0.12) # Closer fit to top labels
         self.axes = fig.add_subplot(111, facecolor=COLOR_PLOT_BG)
         self.axes.set_xlabel("m/q")
         self.axes.set_ylabel(r"Beam Current ($\mu$A)")
@@ -54,12 +56,55 @@ class MqPlotCanvas(FigureCanvas):
         # Connect signals for view changes
         self.axes.callbacks.connect('xlim_changed', self._on_view_changed)
         self.axes.callbacks.connect('ylim_changed', self._on_view_changed)
+        self.mpl_connect("scroll_event", self._on_scroll)
 
     def toggle_zoom(self):
         self.toolbar.zoom()
 
     def toggle_pan(self):
         self.toolbar.pan()
+
+    def _on_scroll(self, event):
+        """Handle mouse wheel scrolling for zooming."""
+        if event.inaxes != self.axes or (hasattr(self, 'toolbar') and self.toolbar.mode != ''):
+            return
+            
+        self._updating_view = True
+        try:
+            # Get current limits
+            cur_xlim = self.axes.get_xlim()
+            cur_ylim = self.axes.get_ylim()
+            
+            xdata = event.xdata
+            ydata = event.ydata
+            
+            # Zoom factor
+            base_scale = 1.3
+            if event.button == 'up':
+                scale_factor = 1 / base_scale
+            elif event.button == 'down':
+                scale_factor = base_scale
+            else:
+                return
+                
+            # Compute new width and height
+            new_width = (cur_xlim[1] - cur_xlim[0]) * scale_factor
+            new_height = (cur_ylim[1] - cur_ylim[0]) * scale_factor
+            
+            # Keep the point under the mouse stationary
+            rel_x = (cur_xlim[1] - xdata) / (cur_xlim[1] - cur_xlim[0])
+            rel_y = (cur_ylim[1] - ydata) / (cur_ylim[1] - cur_ylim[0])
+            
+            self.axes.set_xlim([xdata - new_width * (1 - rel_x), xdata + new_width * rel_x])
+            self.axes.set_ylim([ydata - new_height * (1 - rel_y), ydata + new_height * rel_y])
+            
+            # Update user limits and sync toolbar
+            self._user_limits = (self.axes.get_xlim(), self.axes.get_ylim())
+            if hasattr(self.toolbar, "push_current"):
+                self.toolbar.push_current()
+            self.draw_idle()
+        finally:
+            self._updating_view = False
 
     def _on_view_changed(self, ax):
         if self._updating_view:
@@ -113,10 +158,6 @@ class MqPlotCanvas(FigureCanvas):
             self.axes.set_autoscalex_on(True)
             self.axes.set_autoscaley_on(True)
             
-            # Re-apply title if provided
-            if title:
-                self.axes.set_title(title, fontfamily="monospace", fontsize=10, loc="left")
-
             if csd is None:
                 self.axes.grid(color=COLOR_GRID, ls="--", alpha=0.5)
                 self.draw_idle()
@@ -141,6 +182,11 @@ class MqPlotCanvas(FigureCanvas):
             y_min, y_max = self.axes.get_ylim()
             y_range = max(y_max - y_min, 0.1)
 
+            # Determine the visible x-range for clipping the q-state ruler
+            if self._user_limits:
+                vis_x_min, vis_x_max = self._user_limits[0]
+            else:
+                vis_x_min, vis_x_max = self.axes.get_xlim()
 
             # Draw target/candidate markers
             if candidate:
@@ -152,23 +198,39 @@ class MqPlotCanvas(FigureCanvas):
                     markersize=10,
                     label=f"CAND: {candidate.symbol()}",
                 )
-                mq_min = csd.m_over_q.min()
-                mq_max = csd.m_over_q.max()
+                
+                # Indicator for what the numbers represent
+                self.axes.text(
+                    0.0, 1.05, "CHARGE STATES (q):",
+                    transform=self.axes.transAxes,
+                    color="#666666",
+                    fontsize=8,
+                    fontweight="bold",
+                    fontfamily="sans-serif",
+                    va="bottom",
+                    ha="left"
+                )
+
                 for q in range(1, candidate.z + 1):
                     mq_exp = candidate.m / q
-                    if mq_exp < mq_min or mq_exp > mq_max:
+                    if mq_exp < vis_x_min or mq_exp > vis_x_max:
                         continue
                     self.axes.axvline(
                         mq_exp, ls="--", color=COLOR_CANDIDATE, alpha=0.4, lw=1
                     )
+                    # "Ruler" style labels: anchored ABOVE the axes, rotated for density
                     self.axes.text(
                         mq_exp,
-                        y_max + 0.05 * y_range,
+                        1.02, # Positioned above the axes boundary (1.0)
                         str(q),
-                        color=COLOR_CANDIDATE,
+                        color=COLOR_TEXT,
                         ha="center",
+                        va="bottom",
                         fontsize=9,
                         fontweight="bold",
+                        fontfamily="monospace",
+                        transform=self.axes.get_xaxis_transform(), # X is data, Y is 0.0-1.0 (axes)
+                        rotation=90
                     )
                 if len(candidate.missing_m_over_q) > 0:
                     self.axes.plot(
