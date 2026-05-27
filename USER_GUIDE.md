@@ -2,18 +2,7 @@
 
 ---
 
-## 1. Cassette Futurism UI Philosophy
-The CSD Peak Identifier follows a **"Cassette Futurism"** design ethos:
-- **Functional First** – Every visual element has a concrete purpose. No decorative fluff.
-- **Clear & Obvious** – All controls are discoverable without hidden menus or assumed knowledge.
-- **Tactile Feedback** – Interactions feel like operating a physical console.
-- **Minimalist Color** – Color is used only to convey status (e.g., success, warning, muted).
-
-The UI feels like a well-engineered piece of hardware: straightforward and reliable.
-
----
-
-## 2. Login & Operator IDs
+## 1. Login & Operator IDs
 1. **Start the Application** – On launch, the main window opens, followed by the **ECRIS System Access** (Welcome) dialog.
 2. **Operator ID** – Select your ID from the dropdown or type a new Operator ID.
 3. **Quick-Start Actions**:
@@ -24,7 +13,7 @@ The UI feels like a well-engineered piece of hardware: straightforward and relia
 
 ---
 
-## 3. Main Spectrum View & Navigation
+## 2. Main Spectrum View & Navigation
 The central panel displays the spectral data.
 
 ### Zoom / Reset
@@ -34,7 +23,7 @@ The central panel displays the spectral data.
 
 ---
 
-## 4. Peak Identification Mode
+## 3. Peak Identification Mode
 Enter this mode by clicking **"IDENTIFY PEAKS"** or selecting a candidate from the Isotope Panel.
 
 ### Hotkeys
@@ -50,7 +39,7 @@ The system automatically cycles through candidates. Once an isotope is Accepted 
 
 ---
 
-## 5. Saving Evaluations
+## 4. Saving Evaluations
 When your analysis is complete:
 1. Review your results in the **Isotope Panel** (Evaluation List).
 2. Click the large **"SAVE EVALUATION"** button at the bottom of the panel, or use **File > Save Evaluation (Ctrl+S)**.
@@ -58,7 +47,7 @@ When your analysis is complete:
 
 ---
 
-## 6. Shared Database & Connectivity
+## 5. Shared Database & Connectivity
 The application can operate in two modes, indicated in the bottom-right of the status bar:
 
 - **DB: REMOTE (Green)**: Connected to the lab's shared database at `ecris.lbl.gov`. This requires a VPN connection if you are off-site.
@@ -69,7 +58,7 @@ Toggle this in **File > Preferences**.
 
 ---
 
-## 7. Updates
+## 6. Updates
 The application automatically checks for new versions on GitHub.
 - Use **File > Check for Updates** to manually trigger a check.
 - Use **File > Preferences** to toggle automatic checks on startup.
