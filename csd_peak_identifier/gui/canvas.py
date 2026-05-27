@@ -57,13 +57,14 @@ class MqPlotCanvas(FigureCanvas):
     def _on_view_changed(self, ax):
         if self._updating_view:
             return
-        # If the toolbar is in zoom mode, it means the user is changing the view
-        if self.toolbar.mode == 'zoom rect':
-            self._user_limits = (ax.get_xlim(), ax.get_ylim())
+        # Save any view change as the user's intended view
+        self._user_limits = (ax.get_xlim(), ax.get_ylim())
 
     def reset_view(self):
         self._user_limits = None
+        self._updating_view = True # Prevent the home() call from saving limits
         self.toolbar.home()
+        self._updating_view = False
         self._user_limits = None
 
     def _on_click(self, event):
@@ -75,7 +76,14 @@ class MqPlotCanvas(FigureCanvas):
 
     def redraw(self, csd, identified, candidate=None, target=None, title=None):
         self._updating_view = True
+        
+        # Capture current autoscale state
+        auto_x = self.axes.get_autoscalex_on()
+        auto_y = self.axes.get_autoscaley_on()
+        
         self.axes.clear()
+        
+        # Re-apply basic axis settings
         if title:
             self.axes.set_title(title, fontfamily="monospace", fontsize=10, loc="left")
         self.axes.set_xlabel("m/q")
@@ -176,11 +184,16 @@ class MqPlotCanvas(FigureCanvas):
         self.axes.legend(loc="upper right", fontsize="small")
         self.axes.grid(color=COLOR_GRID, ls="--", alpha=0.5)
 
-        # Apply saved limits if they exist
+        # Apply saved limits if they exist, otherwise use standard auto-scaling
         if self._user_limits:
             self.axes.set_xlim(self._user_limits[0])
             self.axes.set_ylim(self._user_limits[1])
+            self.axes.set_autoscalex_on(False)
+            self.axes.set_autoscaley_on(False)
         else:
+            # Re-enable autoscale for a clean state if no user limits
+            self.axes.set_autoscalex_on(True)
+            self.axes.set_autoscaley_on(True)
             # If not zoomed, apply the standard extra headroom for labels
             if candidate or target:
                 self.axes.set_ylim(y_min, y_max + 0.15 * y_range)
