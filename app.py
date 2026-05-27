@@ -39,6 +39,7 @@ def main():
     # Initialize state
     coordinator.initialize()
     window.show()
+    app.processEvents()
     
     # 3. Handle Welcome flow
     # Use the database manager already initialized in the main window

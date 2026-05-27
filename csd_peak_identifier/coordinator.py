@@ -74,10 +74,11 @@ class Coordinator(QObject):
             raise RuntimeError(f"Coordinator passed bad object {obj}")
 
     def initialize(self, csd_path: Optional[Path] = None):
+        self._configure_signals()
         if csd_path:
             self.load_csd(CSDFile(csd_path))
-        self._configure_signals()
-        self.update_view(rebuild=True)
+        else:
+            self.update_view(rebuild=True)
 
     def _configure_signals(self):
         # Isotope Panel Signals
@@ -148,10 +149,12 @@ class Coordinator(QObject):
         self.csd, self.peaks = load_and_calibrate_csd(csd_file)
         if self._plot:
             self._plot.reset_view()
-        self.clear_all()
+        self.clear_all(update=False)
         self.setup_persistent()
+        self.update_view(rebuild=True)
 
     def setup_persistent(self):
+        found = []
         for s in ["O", "N", "C"]:
             matches = lookup_isotopes(s, self.isotopes)
             if not matches.empty:
@@ -160,6 +163,9 @@ class Coordinator(QObject):
                 )
                 if len(ev.peak_indices) > 0:
                     self.identified.append(ev)
+                    found.append(ev.symbol())
+        if found:
+            print(f"Auto-identified: {', '.join(found)}")
 
     def update_view(self, candidate=None, rebuild=False):
         target_ev = None
@@ -311,6 +317,9 @@ class Coordinator(QObject):
             ]
         )
         self.update_view()
+        
+        # Shift focus to the peak list so arrow keys work immediately
+        self._peak_panel.peak_list.setFocus()
 
     def handle_peak_list_click(self, item):
         # Deselect isotope
@@ -495,12 +504,13 @@ class Coordinator(QObject):
             if row + 1 < self._isotope_panel.candidate_list.count():
                 self._isotope_panel.candidate_list.setCurrentRow(row + 1)
 
-    def clear_all(self):
+    def clear_all(self, update=True):
         self.identified, self.maybe, self.candidates = [], [], []
         self.rejected_symbols = set()
         if self._isotope_panel:
             self._isotope_panel.candidate_list.clear()
-        self.update_view(rebuild=True)
+        if update:
+            self.update_view(rebuild=True)
 
     def remove_selected(self):
         row = self._isotope_panel.eval_list.currentRow()
@@ -614,7 +624,6 @@ class Coordinator(QObject):
                 return
             sb.showMessage(f"Loading and calibrating {csd_filename}...")
             self.load_csd(CSDFile(new_csd_path))
-            self.update_view(rebuild=True)
             sb.showMessage(f"Successfully loaded {csd_filename}", 3000)
         except Exception as e:
             sb.showMessage(f"Error loading file: {str(e)}", 5000)

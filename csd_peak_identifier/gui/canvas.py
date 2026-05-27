@@ -69,9 +69,21 @@ class MqPlotCanvas(FigureCanvas):
         self._updating_view = True
         try:
             # Clear toolbar history to ensure 'home' is a fresh start
-            self.toolbar._views.clear()
-            self.toolbar._positions.clear()
-            self.toolbar.home()
+            # Handle different Matplotlib versions (older _views/_positions vs newer _nav_stack)
+            if hasattr(self.toolbar, "_nav_stack"):
+                self.toolbar._nav_stack.clear()
+            else:
+                if hasattr(self.toolbar, "_views"):
+                    self.toolbar._views.clear()
+                if hasattr(self.toolbar, "_positions"):
+                    self.toolbar._positions.clear()
+            
+            # home() might fail if stack is empty, so we just clear and we'll push_current in redraw
+            # but usually home() is what we want for 'reset'
+            try:
+                self.toolbar.home()
+            except Exception:
+                pass 
         finally:
             self._updating_view = False
             self._user_limits = None
@@ -104,7 +116,7 @@ class MqPlotCanvas(FigureCanvas):
 
             if csd is None:
                 self.axes.grid(color=COLOR_GRID, ls="--", alpha=0.5)
-                self.draw()
+                self.draw_idle()
                 return
 
             # Plot main CSD data
@@ -120,10 +132,12 @@ class MqPlotCanvas(FigureCanvas):
 
             # Recompute data limits from newly plotted data
             self.axes.relim()
+            self.axes.autoscale_view()
             
-            # Calculate standard headroom for markers
+            # Calculate standard headroom for markers using the autoscaled limits
             y_min, y_max = self.axes.get_ylim()
             y_range = max(y_max - y_min, 0.1)
+
 
             # Draw target/candidate markers
             if target and not candidate:
@@ -212,8 +226,9 @@ class MqPlotCanvas(FigureCanvas):
                     self.axes.set_ylim(y_min, y_max + 0.15 * y_range)
 
             # Synchronize the toolbar's internal view stack
-            self.toolbar.push_current()
-            self.draw()
+            if hasattr(self.toolbar, "push_current"):
+                self.toolbar.push_current()
+            self.draw_idle()
 
         finally:
             self._updating_view = False
