@@ -97,11 +97,19 @@ class WelcomeDialog(QDialog):
         user_layout.addRow(user_label, self.user_combo)
         
         # Remote Toggle in User Frame
-        self.remote_cb = QCheckBox("USE REMOTE SHARED DATABASE")
+        remote_layout = QHBoxLayout()
+        self.remote_cb = QCheckBox("USE REMOTE")
         self.remote_cb.setStyleSheet(f"font-family: {FONT_SANS}; font-size: 11px; color: {COLOR_TEXT}; margin-top: 5px;")
         self.remote_cb.setChecked(self.db.use_remote)
         self.remote_cb.toggled.connect(self.on_remote_toggled)
-        user_layout.addRow("", self.remote_cb)
+        remote_layout.addWidget(self.remote_cb)
+        
+        self.conn_status_lbl = QLabel("")
+        self.conn_status_lbl.setStyleSheet(f"font-family: {FONT_SANS}; font-size: 10px; font-weight: bold; margin-top: 5px;")
+        remote_layout.addStretch()
+        remote_layout.addWidget(self.conn_status_lbl)
+        
+        user_layout.addRow("", remote_layout)
         
         layout.addWidget(user_frame)
 
@@ -178,10 +186,12 @@ class WelcomeDialog(QDialog):
         layout.addLayout(exit_layout)
 
         # Initial stats
+        self.update_connection_indicator(self.db.is_connected_to_remote)
         self.update_stats()
 
     def on_remote_toggled(self, checked):
-        self.db.toggle_remote(checked)
+        connected = self.db.toggle_remote(checked)
+        self.update_connection_indicator(connected)
         # Refresh the user list in the combo
         current_text = self.user_combo.currentText()
         self.user_combo.blockSignals(True)
@@ -190,6 +200,16 @@ class WelcomeDialog(QDialog):
         self.user_combo.setCurrentText(current_text)
         self.user_combo.blockSignals(False)
         self.update_stats()
+
+    def update_connection_indicator(self, connected):
+        if not self.remote_cb.isChecked():
+            self.conn_status_lbl.setText("")
+        elif connected:
+            self.conn_status_lbl.setText("CONNECTED")
+            self.conn_status_lbl.setStyleSheet(f"font-family: {FONT_SANS}; font-size: 10px; font-weight: bold; color: green; margin-top: 5px;")
+        else:
+            self.conn_status_lbl.setText("OFFLINE")
+            self.conn_status_lbl.setStyleSheet(f"font-family: {FONT_SANS}; font-size: 10px; font-weight: bold; color: red; margin-top: 5px;")
 
     def update_stats(self):
         username = self.user_combo.currentText().strip()
