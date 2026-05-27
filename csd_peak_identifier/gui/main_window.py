@@ -2,7 +2,7 @@ import numpy as np
 import webbrowser
 from PySide6.QtWidgets import (
     QMainWindow, QWidget, QVBoxLayout, QHBoxLayout, 
-    QStatusBar, QMessageBox, QLabel
+    QStatusBar, QMessageBox, QLabel, QPushButton
 )
 from PySide6.QtCore import Qt, QSettings, QThread, Signal
 from PySide6.QtGui import QAction
@@ -131,9 +131,26 @@ class CsdPeakIdentifierApp(QMainWindow):
         self.canvas = MqPlotCanvas(self)
         center_layout.addWidget(self.canvas, 1)
 
-        self.toolbar = NavigationToolbar(self.canvas, self)
-        self.toolbar.setStyleSheet(f"background: {COLOR_BG}; border: none; font-family: {FONT_SANS};")
-        center_layout.addWidget(self.toolbar)
+        # Plot Controls
+        plot_ctrl_layout = QHBoxLayout()
+        self.zoom_btn = QPushButton("ZOOM")
+        self.zoom_btn.setCheckable(True)
+        self.zoom_btn.setStyleSheet(
+            f"font-family: {FONT_SANS}; font-weight: bold; padding: 5px 15px;"
+        )
+        self.zoom_btn.clicked.connect(self.toggle_zoom_mode)
+        
+        self.reset_btn = QPushButton("RESET VIEW")
+        self.reset_btn.setStyleSheet(
+            f"font-family: {FONT_SANS}; padding: 5px 15px;"
+        )
+        self.reset_btn.clicked.connect(self.reset_plot_view)
+        
+        plot_ctrl_layout.addStretch()
+        plot_ctrl_layout.addWidget(self.zoom_btn)
+        plot_ctrl_layout.addWidget(self.reset_btn)
+        plot_ctrl_layout.addStretch()
+        center_layout.addLayout(plot_ctrl_layout)
 
         self.info_panel = InfoPanel()
         center_layout.addWidget(self.info_panel, 0)
@@ -150,6 +167,25 @@ class CsdPeakIdentifierApp(QMainWindow):
         self.db_status_label = QLabel("DB: LOCAL")
         self.db_status_label.setStyleSheet(f"font-family: {FONT_SANS}; font-weight: bold; margin-right: 10px;")
         self.status_bar.addPermanentWidget(self.db_status_label)
+
+    def toggle_zoom_mode(self):
+        self.canvas.toggle_zoom()
+        if self.zoom_btn.isChecked():
+            self.zoom_btn.setStyleSheet(
+                f"font-family: {FONT_SANS}; font-weight: bold; padding: 5px 15px; background: {COLOR_ACTION}; color: white;"
+            )
+            self.status_bar.showMessage("ZOOM MODE ACTIVE: Select a box on the plot to zoom in.")
+        else:
+            self.zoom_btn.setStyleSheet(
+                f"font-family: {FONT_SANS}; font-weight: bold; padding: 5px 15px;"
+            )
+            self.status_bar.showMessage("ZOOM MODE DEACTIVATED", 2000)
+
+    def reset_plot_view(self):
+        self.canvas.reset_view()
+        if self.coordinator:
+            self.coordinator.update_view()
+        self.status_bar.showMessage("VIEW RESET", 2000)
 
     def set_coordinator(self, coordinator):
         self.coordinator = coordinator
