@@ -146,6 +146,14 @@ class CsdPeakIdentifierApp(QMainWindow):
 
         # Plot Controls
         plot_ctrl_layout = QHBoxLayout()
+
+        self.pan_btn = QPushButton("PAN")
+        self.pan_btn.setCheckable(True)
+        self.pan_btn.setStyleSheet(
+            f"font-family: {FONT_SANS}; font-weight: bold; padding: 5px 15px;"
+        )
+        self.pan_btn.clicked.connect(self.toggle_pan_mode)
+
         self.zoom_btn = QPushButton("ZOOM")
         self.zoom_btn.setCheckable(True)
         self.zoom_btn.setStyleSheet(
@@ -160,6 +168,7 @@ class CsdPeakIdentifierApp(QMainWindow):
         self.reset_btn.clicked.connect(self.reset_plot_view)
         
         plot_ctrl_layout.addStretch()
+        plot_ctrl_layout.addWidget(self.pan_btn)
         plot_ctrl_layout.addWidget(self.zoom_btn)
         plot_ctrl_layout.addWidget(self.reset_btn)
         plot_ctrl_layout.addStretch()
@@ -181,9 +190,36 @@ class CsdPeakIdentifierApp(QMainWindow):
         self.db_status_label.setStyleSheet(f"font-family: {FONT_SANS}; font-weight: bold; margin-right: 10px;")
         self.status_bar.addPermanentWidget(self.db_status_label)
 
+    def toggle_pan_mode(self):
+        self.canvas.toggle_pan()
+        if self.pan_btn.isChecked():
+            # Deactivate zoom button visual state if active
+            # We don't call toggle_zoom because Matplotlib's pan() 
+            # already deactivated it internally.
+            if self.zoom_btn.isChecked():
+                self.zoom_btn.setChecked(False)
+                self.zoom_btn.setStyleSheet(f"font-family: {FONT_SANS}; font-weight: bold; padding: 5px 15px;")
+
+            self.pan_btn.setStyleSheet(
+                f"font-family: {FONT_SANS}; font-weight: bold; padding: 5px 15px; background: {COLOR_ACTION}; color: white;"
+            )
+            self.status_bar.showMessage("PAN MODE ACTIVE: Click and drag to navigate.")
+        else:
+            self.pan_btn.setStyleSheet(
+                f"font-family: {FONT_SANS}; font-weight: bold; padding: 5px 15px;"
+            )
+            self.status_bar.showMessage("PAN MODE DEACTIVATED", 2000)
+
     def toggle_zoom_mode(self):
         self.canvas.toggle_zoom()
         if self.zoom_btn.isChecked():
+            # Deactivate pan button visual state if active
+            # We don't call toggle_pan because Matplotlib's zoom() 
+            # already deactivated it internally.
+            if self.pan_btn.isChecked():
+                self.pan_btn.setChecked(False)
+                self.pan_btn.setStyleSheet(f"font-family: {FONT_SANS}; font-weight: bold; padding: 5px 15px;")
+
             self.zoom_btn.setStyleSheet(
                 f"font-family: {FONT_SANS}; font-weight: bold; padding: 5px 15px; background: {COLOR_ACTION}; color: white;"
             )
@@ -201,6 +237,12 @@ class CsdPeakIdentifierApp(QMainWindow):
 
     def reset_plot_view(self):
         self.canvas.reset_view()
+        if self.zoom_btn.isChecked():
+            self.zoom_btn.setChecked(False)
+            self.zoom_btn.setStyleSheet(f"font-family: {FONT_SANS}; font-weight: bold; padding: 5px 15px;")
+        if self.pan_btn.isChecked():
+            self.pan_btn.setChecked(False)
+            self.pan_btn.setStyleSheet(f"font-family: {FONT_SANS}; font-weight: bold; padding: 5px 15px;")
         if self.coordinator:
             self.coordinator.update_view()
         self.status_bar.showMessage("VIEW RESET", 2000)

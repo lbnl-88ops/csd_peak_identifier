@@ -58,6 +58,9 @@ class MqPlotCanvas(FigureCanvas):
     def toggle_zoom(self):
         self.toolbar.zoom()
 
+    def toggle_pan(self):
+        self.toolbar.pan()
+
     def _on_view_changed(self, ax):
         if self._updating_view:
             return
@@ -124,7 +127,7 @@ class MqPlotCanvas(FigureCanvas):
                 self.axes.plot(
                     csd.m_over_q,
                     csd.beam_current,
-                    ".:",
+                    "-",
                     color="black",
                     alpha=0.4,
                     label="CSD",
@@ -140,19 +143,6 @@ class MqPlotCanvas(FigureCanvas):
 
 
             # Draw target/candidate markers
-            if target and not candidate:
-                self.axes.plot(
-                    target.m_over_q,
-                    target.current + 0.05 * y_range,
-                    "v",
-                    color=COLOR_TARGET,
-                    markersize=12,
-                    label="TARGET",
-                )
-                self.axes.axvline(
-                    target.m_over_q[0], color=COLOR_TARGET, ls="-", alpha=0.3, lw=1.5
-                )
-
             if candidate:
                 self.axes.plot(
                     candidate.m_over_q,
@@ -162,8 +152,12 @@ class MqPlotCanvas(FigureCanvas):
                     markersize=10,
                     label=f"CAND: {candidate.symbol()}",
                 )
+                mq_min = csd.m_over_q.min()
+                mq_max = csd.m_over_q.max()
                 for q in range(1, candidate.z + 1):
                     mq_exp = candidate.m / q
+                    if mq_exp < mq_min or mq_exp > mq_max:
+                        continue
                     self.axes.axvline(
                         mq_exp, ls="--", color=COLOR_CANDIDATE, alpha=0.4, lw=1
                     )
@@ -185,6 +179,19 @@ class MqPlotCanvas(FigureCanvas):
                         mec=COLOR_CANDIDATE,
                         alpha=0.6,
                     )
+
+            if target:
+                self.axes.plot(
+                    target.m_over_q,
+                    target.current + 0.05 * y_range,
+                    "v",
+                    color=COLOR_TARGET,
+                    markersize=12,
+                    label="TARGET",
+                )
+                self.axes.axvline(
+                    target.m_over_q[0], color=COLOR_TARGET, ls="-", alpha=0.3, lw=1.5
+                )
 
             # Draw identified peaks with style cycling
             peak_counts, style_cycle = (

@@ -207,10 +207,6 @@ class Coordinator(QObject):
                 if 0 <= row < len(self.candidates):
                     highlight_ev = self.candidates[row]
 
-        # Ensure "Either/Or" rule: If we have an isotope highlighted, don't show the peak target.
-        if highlight_ev:
-            target_ev = None
-
         if highlight_ev:
             score = highlight_ev.score(self.csd.m_over_q.max()) if self.csd is not None else 0.0
             self._info_panel.setText(
