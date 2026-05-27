@@ -109,7 +109,7 @@ class WelcomeDialog(QDialog):
         remote_layout.addStretch()
         remote_layout.addWidget(self.conn_status_lbl)
         
-        user_layout.addRow("", remote_layout)
+        user_layout.addRow(remote_layout)
         
         layout.addWidget(user_frame)
 
