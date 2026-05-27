@@ -36,8 +36,15 @@ class MqPlotCanvas(FigureCanvas):
         super().__init__(fig)
         self.setParent(parent)
         self.on_mq_clicked = None
-        self.mpl_connect("button_press_event", self._on_click)
+        self.mpl_connect("button_press_event", self._on_button_press)
+        self.mpl_connect("button_release_event", self._on_button_release)
+        self.mpl_connect("motion_notify_event", self._on_mouse_move)
+        self.mpl_connect("scroll_event", self._on_scroll)
         
+        # Panning state
+        self._right_click_panning = False
+        self._last_mouse_pos = None
+
         # Use a hidden NavigationToolbar to leverage its high-quality zoom logic
         self.toolbar = NavigationToolbar(self, parent)
         self.toolbar.hide()
@@ -105,6 +112,54 @@ class MqPlotCanvas(FigureCanvas):
             self.draw_idle()
         finally:
             self._updating_view = False
+
+    def _on_button_press(self, event):
+        if event.inaxes != self.axes:
+            return
+            
+        if event.button == 1: # Left click - Peak selection
+            # Check if toolbar is in a mode that should prevent peak selection
+            if hasattr(self, 'toolbar') and self.toolbar.mode != '':
+                return
+            if self.on_mq_clicked:
+                self.on_mq_clicked(event.xdata, event.ydata)
+        elif event.button == 3: # Right click - Start Panning
+            # Only pan if we aren't in a special toolbar mode (zoom/built-in pan)
+            if hasattr(self, 'toolbar') and self.toolbar.mode == '':
+                self._right_click_panning = True
+                self._last_mouse_pos = (event.x, event.y)
+
+    def _on_button_release(self, event):
+        if event.button == 3:
+            self._right_click_panning = False
+            self._last_mouse_pos = None
+
+    def _on_mouse_move(self, event):
+        if self._right_click_panning and event.x is not None and event.y is not None:
+            dx = event.x - self._last_mouse_pos[0]
+            dy = event.y - self._last_mouse_pos[1]
+            self._last_mouse_pos = (event.x, event.y)
+            
+            self._updating_view = True
+            try:
+                # Use axes coordinate transforms to convert pixel delta to data delta
+                inv = self.axes.transData.inverted()
+                p0 = inv.transform((0, 0))
+                p1 = inv.transform((dx, dy))
+                dat_dx = p1[0] - p0[0]
+                dat_dy = p1[1] - p0[1]
+                
+                xlim = self.axes.get_xlim()
+                ylim = self.axes.get_ylim()
+                self.axes.set_xlim(xlim[0] - dat_dx, xlim[1] - dat_dx)
+                self.axes.set_ylim(ylim[0] - dat_dy, ylim[1] - dat_dy)
+                
+                self._user_limits = (self.axes.get_xlim(), self.axes.get_ylim())
+                if hasattr(self.toolbar, "push_current"):
+                    self.toolbar.push_current()
+                self.draw_idle()
+            finally:
+                self._updating_view = False
 
     def _on_view_changed(self, ax):
         if self._updating_view:
@@ -182,12 +237,6 @@ class MqPlotCanvas(FigureCanvas):
             y_min, y_max = self.axes.get_ylim()
             y_range = max(y_max - y_min, 0.1)
 
-            # Determine the visible x-range for clipping the q-state ruler
-            if self._user_limits:
-                vis_x_min, vis_x_max = self._user_limits[0]
-            else:
-                vis_x_min, vis_x_max = self.axes.get_xlim()
-
             # Draw target/candidate markers
             if candidate:
                 self.axes.plot(
@@ -199,39 +248,6 @@ class MqPlotCanvas(FigureCanvas):
                     label=f"CAND: {candidate.symbol()}",
                 )
                 
-                # Indicator for what the numbers represent
-                self.axes.text(
-                    0.0, 1.05, "CHARGE STATES (q):",
-                    transform=self.axes.transAxes,
-                    color="#666666",
-                    fontsize=8,
-                    fontweight="bold",
-                    fontfamily="sans-serif",
-                    va="bottom",
-                    ha="left"
-                )
-
-                for q in range(1, candidate.z + 1):
-                    mq_exp = candidate.m / q
-                    if mq_exp < vis_x_min or mq_exp > vis_x_max:
-                        continue
-                    self.axes.axvline(
-                        mq_exp, ls="--", color=COLOR_CANDIDATE, alpha=0.4, lw=1
-                    )
-                    # "Ruler" style labels: anchored ABOVE the axes, rotated for density
-                    self.axes.text(
-                        mq_exp,
-                        1.02, # Positioned above the axes boundary (1.0)
-                        str(q),
-                        color=COLOR_TEXT,
-                        ha="center",
-                        va="bottom",
-                        fontsize=9,
-                        fontweight="bold",
-                        fontfamily="monospace",
-                        transform=self.axes.get_xaxis_transform(), # X is data, Y is 0.0-1.0 (axes)
-                        rotation=90
-                    )
                 if len(candidate.missing_m_over_q) > 0:
                     self.axes.plot(
                         candidate.missing_m_over_q,
@@ -278,9 +294,6 @@ class MqPlotCanvas(FigureCanvas):
                 )
                 style_cycle.rotate(-1)
 
-            self.axes.legend(loc="upper right", fontsize="small")
-            self.axes.grid(color=COLOR_GRID, ls="--", alpha=0.5)
-
             # FINAL STEP: Apply view limits
             # If the user has a custom zoom, enforce it.
             # Otherwise, use standard autoscale with headroom.
@@ -293,6 +306,48 @@ class MqPlotCanvas(FigureCanvas):
                 self.axes.autoscale_view()
                 if candidate or target:
                     self.axes.set_ylim(y_min, y_max + 0.15 * y_range)
+
+            # NOW plot the q-state ruler based on ACTUAL current limits to ensure clipping
+            vis_x_min, vis_x_max = self.axes.get_xlim()
+            if candidate:
+                # Indicator for what the numbers represent
+                self.axes.text(
+                    0.0, 1.05, "CHARGE STATES (q):",
+                    transform=self.axes.transAxes,
+                    color="#666666",
+                    fontsize=8,
+                    fontweight="bold",
+                    fontfamily="sans-serif",
+                    va="bottom",
+                    ha="left"
+                )
+
+                for q in range(1, candidate.z + 1):
+                    mq_exp = candidate.m / q
+                    # Tight clipping to the viewport
+                    if mq_exp < vis_x_min or mq_exp > vis_x_max:
+                        continue
+                        
+                    self.axes.axvline(
+                        mq_exp, ls="--", color=COLOR_CANDIDATE, alpha=0.4, lw=1
+                    )
+                    # "Ruler" style labels: anchored ABOVE the axes, rotated for density
+                    self.axes.text(
+                        mq_exp,
+                        1.02, # Positioned above the axes boundary (1.0)
+                        str(q),
+                        color=COLOR_TEXT,
+                        ha="center",
+                        va="bottom",
+                        fontsize=9,
+                        fontweight="bold",
+                        fontfamily="monospace",
+                        transform=self.axes.get_xaxis_transform(), # X is data, Y is 0.0-1.0 (axes)
+                        rotation=90
+                    )
+
+            self.axes.legend(loc="upper right", fontsize="small")
+            self.axes.grid(color=COLOR_GRID, ls="--", alpha=0.5)
 
             # Synchronize the toolbar's internal view stack
             if hasattr(self.toolbar, "push_current"):
