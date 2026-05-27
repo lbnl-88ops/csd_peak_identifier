@@ -2,7 +2,7 @@ import numpy as np
 import webbrowser
 from PySide6.QtWidgets import (
     QMainWindow, QWidget, QVBoxLayout, QHBoxLayout, 
-    QStatusBar, QMessageBox
+    QStatusBar, QMessageBox, QLabel
 )
 from PySide6.QtCore import Qt, QSettings, QThread, Signal
 from PySide6.QtGui import QAction
