@@ -1,7 +1,7 @@
 import sqlite3
 import os
 from datetime import datetime
-from ..gui.constants import DB_PATH
+from csd_peak_identifier.gui.constants import DB_PATH
 from .remote_db import RemoteDatabaseBackend
 
 class DatabaseManager:

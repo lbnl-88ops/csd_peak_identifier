@@ -1,6 +1,6 @@
 import requests
 import json
-from ..gui.constants import API_URL
+from csd_peak_identifier.gui.constants import API_URL
 
 class RemoteDatabaseBackend:
     """
