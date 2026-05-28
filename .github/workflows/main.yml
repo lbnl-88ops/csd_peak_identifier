@@ -21,37 +21,12 @@ jobs:
         run: |
           pip install poetry
           poetry install --with windows-build
-      - name: Install NSIS
-        run: |
-          choco install nsis --yes
-          echo "C:\Program Files (x86)\NSIS" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
-          echo "C:\Program Files\NSIS" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+      - name: Setup NSIS
+        uses: actions/setup-nsis@v1
       - name: Build executable
         run: poetry run pyinstaller --noconsole --name peak_identifier --onedir --icon icon.ico --add-data "icon.png;." --add-data "data;data" app.py
       - name: Build installer
-        run: |
-          # Try to find makensis in common locations or PATH
-          $makensis = (Get-Command makensis -ErrorAction SilentlyContinue).Source
-          if (-not $makensis) {
-            $commonPaths = @(
-              "C:\Program Files (x86)\NSIS\makensis.exe",
-              "C:\Program Files\NSIS\makensis.exe"
-            )
-            foreach ($path in $commonPaths) {
-              if (Test-Path $path) {
-                $makensis = $path
-                break
-              }
-            }
-          }
-          
-          if ($makensis) {
-            Write-Host "Found makensis at: $makensis"
-            & $makensis installer.nsi
-          } else {
-            Write-Error "Could not find makensis.exe in PATH or common installation directories."
-            exit 1
-          }
+        run: makensis installer.nsi
       - name: Create Release
         id: create_release
         uses: softprops/action-gh-release@v2
