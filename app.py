@@ -55,6 +55,22 @@ def main():
     last_user = settings.value("last_username", "")
     
     welcome_dlg = WelcomeDialog(db, users, last_username=last_user, parent=window)
+    
+    # Connect update checker result to the welcome dialog if it's still open
+    def on_update_result(latest_version, release_url, quiet):
+        if latest_version:
+            welcome_dlg.set_update_status(f"CRITICAL SYSTEM UPDATE AVAILABLE: v{latest_version}", is_alert=True)
+        else:
+            welcome_dlg.set_update_status(f"SYSTEM VERSION v{VERSION} IS CURRENT")
+            
+    window.update_thread.finished.connect(on_update_result)
+    
+    # Pre-set if thread is already finished (unlikely but possible)
+    if not window.update_thread.isRunning():
+        # We can't easily get the result here without modification to CsdPeakIdentifierApp
+        # but the signal will fire once it starts.
+        pass
+
     if welcome_dlg.exec() != QDialog.Accepted:
         sys.exit(0)
         

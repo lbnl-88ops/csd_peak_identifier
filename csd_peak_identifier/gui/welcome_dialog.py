@@ -192,6 +192,12 @@ class WelcomeDialog(QDialog):
         exit_layout.addWidget(self.exit_btn)
         layout.addLayout(exit_layout)
 
+        # Update Status (Phase 11 Refinement)
+        self.update_lbl = QLabel("")
+        self.update_lbl.setStyleSheet(f"font-family: {FONT_SANS}; font-size: 10px; font-weight: bold; color: {COLOR_ACTION};")
+        self.update_lbl.setAlignment(Qt.AlignCenter)
+        layout.addWidget(self.update_lbl)
+
         # Initial stats
         self.update_connection_indicator(self.db.is_connected_to_remote)
         self.update_stats()
@@ -217,6 +223,13 @@ class WelcomeDialog(QDialog):
         else:
             self.conn_status_lbl.setText("OFFLINE")
             self.conn_status_lbl.setStyleSheet(f"font-family: {FONT_SANS}; font-size: 10px; font-weight: bold; color: red; margin-top: 5px;")
+
+    def set_update_status(self, text, is_alert=False):
+        self.update_lbl.setText(text)
+        if is_alert:
+            self.update_lbl.setStyleSheet(f"font-family: {FONT_SANS}; font-size: 11px; font-weight: bold; color: #d55e00; background: #fff3e0; border: 1px solid #d55e00; padding: 5px;")
+        else:
+            self.update_lbl.setStyleSheet(f"font-family: {FONT_SANS}; font-size: 10px; color: {COLOR_MUTED};")
 
     def update_stats(self):
         username = self.user_combo.currentText().strip()
