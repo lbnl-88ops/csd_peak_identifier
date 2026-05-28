@@ -12,6 +12,15 @@ from csd_peak_identifier.files.csd_file import CSDFile
 
 
 @dataclass
+class PeakParameters:
+    min_height: float = 0.2
+    max_height: Optional[float] = None
+    threshold: Optional[float] = None
+    distance: Optional[float] = None
+    prominance: Optional[float] = None
+
+
+@dataclass
 class ElementEvaluation:
     s: str
     m: int
@@ -35,7 +44,9 @@ class ElementEvaluation:
         return len(self.peak_indices) / expected_count
 
 
-def load_and_calibrate_csd(csd_file: CSDFile) -> Any:
+def load_and_calibrate_csd(
+    csd_file: CSDFile, peak_parameters: Optional[PeakParameters] = None
+) -> Any:
     """Perform initial oxygen calibration on a CSDFile object."""
     csd = csd_file.csd
     if csd is None:
@@ -50,7 +61,16 @@ def load_and_calibrate_csd(csd_file: CSDFile) -> Any:
         max_function_evaluations=3000,
     )
     print(sol)
-    peaks, _ = find_peaks(csd.beam_current, height=0.2, prominence=0.2)
+    if peak_parameters is not None:
+        peaks, _ = find_peaks(
+            csd.beam_current,
+            height=[peak_parameters.min_height, peak_parameters.max_height],
+            threshold=peak_parameters.threshold,
+            distance=peak_parameters.distance,
+            prominence=peak_parameters.prominance,
+        )
+    else:
+        peaks, _ = find_peaks(csd.beam_current, height=0.2, prominence=0.2)
     return csd, peaks
 
 
