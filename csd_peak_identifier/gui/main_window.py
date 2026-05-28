@@ -88,23 +88,6 @@ class CsdPeakIdentifierApp(QMainWindow):
         
         file_menu.addSeparator()
 
-        self.eval_mode_action = QAction("&Evaluation Mode...", self)
-        self.eval_mode_action.triggered.connect(self.show_evaluation_mode)
-        file_menu.addAction(self.eval_mode_action)
-
-        file_menu.addSeparator()
-
-        self.review_csd_action = QAction("&Review Evaluations for this CSD...", self)
-        self.review_csd_action.setEnabled(False)   # enabled once a CSD is loaded
-        self.review_csd_action.triggered.connect(self.show_cross_eval_for_current_csd)
-        file_menu.addAction(self.review_csd_action)
-
-        self.dashboard_action = QAction("&Analysis Dashboard...", self)
-        self.dashboard_action.triggered.connect(self.show_analysis_dashboard)
-        file_menu.addAction(self.dashboard_action)
-
-        file_menu.addSeparator()
-        
         self.prefs_action = QAction("&Preferences...", self)
         self.prefs_action.triggered.connect(self.show_preferences)
         file_menu.addAction(self.prefs_action)
@@ -127,6 +110,28 @@ class CsdPeakIdentifierApp(QMainWindow):
         self.exit_action = QAction("E&xit", self)
         self.exit_action.triggered.connect(self.close)
         file_menu.addAction(self.exit_action)
+
+        # Analysis Menu
+        analysis_menu = self.menu_bar.addMenu("&Analysis")
+        
+        self.eval_mode_action = QAction("&Evaluation Mode...", self)
+        self.eval_mode_action.triggered.connect(self.show_evaluation_mode)
+        analysis_menu.addAction(self.eval_mode_action)
+
+        self.review_csd_action = QAction("&Review Peer Evaluations...", self)
+        self.review_csd_action.setEnabled(False)   # enabled once a CSD is loaded
+        self.review_csd_action.triggered.connect(self.show_cross_eval_for_current_csd)
+        analysis_menu.addAction(self.review_csd_action)
+
+        self.dashboard_action = QAction("&Lab Analysis Dashboard...", self)
+        self.dashboard_action.triggered.connect(self.show_analysis_dashboard)
+        analysis_menu.addAction(self.dashboard_action)
+
+        analysis_menu.addSeparator()
+
+        self.peak_params_action = QAction("&Peak search parameters...", self)
+        self.peak_params_action.triggered.connect(self.show_peak_params_dialog)
+        analysis_menu.addAction(self.peak_params_action)
 
         # Left Sidebar (Isotopes)
         self.isotope_panel = IsotopePanel()
@@ -270,6 +275,8 @@ class CsdPeakIdentifierApp(QMainWindow):
         self.username = username
         self.status_bar.showMessage(f"LOGGED IN AS: {self.username}")
         self.setWindowTitle(f"CSD Peak Identifier (v{VERSION}) - ECRIS Access: {self.username}")
+        if self.coordinator:
+            self.coordinator.load_user_parameters(username)
 
     def switch_user(self):
         users = self.db.get_all_users()
@@ -304,6 +311,11 @@ class CsdPeakIdentifierApp(QMainWindow):
         if not self.coordinator:
             return
         self.coordinator.save_current_evaluation()
+
+    def show_peak_params_dialog(self):
+        if not self.coordinator:
+            return
+        self.coordinator.show_peak_parameters_dialog()
 
     def show_preferences(self):
         dlg = PreferencesDialog(self)

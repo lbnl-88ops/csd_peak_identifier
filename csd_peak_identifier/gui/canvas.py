@@ -301,6 +301,7 @@ class MqPlotCanvas(FigureCanvas):
                     m,
                     mfc=c,
                     mec=COLOR_TEXT,
+                    markersize=10, # Increased from default
                     label=ev.symbol(),
                 )
                 style_cycle.rotate(-1)

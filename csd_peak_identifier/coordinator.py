@@ -14,6 +14,7 @@ from csd_peak_identifier.logic import (
     create_evaluation,
     lookup_isotopes,
     load_and_calibrate_csd,
+    PeakParameters,
 )
 from csd_peak_identifier.gui.constants import (
     ISOTOPE_DATA,
@@ -53,6 +54,7 @@ class Coordinator(QObject):
         self.rejected_symbols = set()
         self.candidates: List[ElementEvaluation] = []
         self.targeted_mq: Optional[float] = None
+        self.peak_parameters = PeakParameters()
 
         # UI Objects (to be attached)
         self._isotope_panel: Optional[IsotopePanel] = None
@@ -146,7 +148,7 @@ class Coordinator(QObject):
 
     def load_csd(self, csd_file: CSDFile):
         self.csd_file = csd_file
-        self.csd, self.peaks = load_and_calibrate_csd(csd_file)
+        self.csd, self.peaks = load_and_calibrate_csd(csd_file, peak_parameters=self.peak_parameters)
         if self._plot:
             self._plot.reset_view()
         self.clear_all(update=False)
@@ -634,6 +636,49 @@ class Coordinator(QObject):
             sb.showMessage(f"Successfully loaded {csd_filename}", 3000)
         except Exception as e:
             sb.showMessage(f"Error loading file: {str(e)}", 5000)
+
+    def show_peak_parameters_dialog(self):
+        from csd_peak_identifier.gui.peak_parameters_dialog import PeakParametersDialog
+        dlg = PeakParametersDialog(self.peak_parameters, parent=self._main_window)
+        if dlg.exec() == QDialog.Accepted:
+            new_params = dlg.get_params()
+            if new_params != self.peak_parameters:
+                self.peak_parameters = new_params
+                # Save to DB
+                username = self._main_window.username
+                self._main_window.db.save_peak_parameters(username, {
+                    'min_height': self.peak_parameters.min_height,
+                    'max_height': self.peak_parameters.max_height,
+                    'threshold': self.peak_parameters.threshold,
+                    'distance': self.peak_parameters.distance,
+                    'prominence': self.peak_parameters.prominance
+                })
+                
+                # Ask to reload
+                if self.csd_file:
+                    reply = QMessageBox.question(
+                        self._main_window,
+                        "RELOAD DATA?",
+                        "Peak search parameters have changed.\n\nWould you like to reload and re-calibrate the current CSD?",
+                        QMessageBox.Yes | QMessageBox.No,
+                        QMessageBox.Yes
+                    )
+                    if reply == QMessageBox.Yes:
+                        self.load_csd(self.csd_file)
+
+    def load_user_parameters(self, username):
+        """Loads user-specific peak parameters from the database."""
+        params_row = self._main_window.db.get_peak_parameters(username)
+        if params_row:
+            self.peak_parameters = PeakParameters(
+                min_height=params_row.get('min_height', 0.2),
+                max_height=params_row.get('max_height'),
+                threshold=params_row.get('threshold'),
+                distance=params_row.get('distance'),
+                prominance=params_row.get('prominence')
+            )
+        else:
+            self.peak_parameters = PeakParameters() # Default
 
     def save_current_evaluation(self):
         if not self.csd_file:

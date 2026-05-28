@@ -90,3 +90,13 @@
 - [x] Implement logic to pull and overlay multiple evaluations for the same CSD
 - [x] Visualize agreement/disagreement between researchers (e.g., color-coded isotopes)
 - [x] Add an "Analysis Dashboard" for lab-wide progress tracking
+
+## Phase 13: Analysis Configuration (COMPLETED)
+- [x] Define `user_peak_parameters` table in local database
+- [x] Create `PeakParametersDialog` for per-user analysis configuration
+- [x] Add "Analysis" menu with "Peak search parameters..." action
+- [x] Persist peak search parameters (min_height, threshold, distance, prominence, etc.) per-user
+- [x] Automatically load user-specific parameters on login/switch
+- [x] Prompt user to reload/re-calibrate CSD when parameters are modified
+- [x] Integrate custom parameters into the `load_and_calibrate_csd` logic
+- [x] Add visual guide image (`peak_description.png`) to the configuration dialog

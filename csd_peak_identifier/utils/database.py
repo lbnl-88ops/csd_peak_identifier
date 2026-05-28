@@ -73,6 +73,18 @@ class DatabaseManager:
                 FOREIGN KEY (evaluation_id) REFERENCES evaluations (id)
             )
         ''')
+
+        # Table for per-user peak search parameters
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS user_peak_parameters (
+                username TEXT PRIMARY KEY,
+                min_height REAL,
+                max_height REAL,
+                threshold REAL,
+                distance REAL,
+                prominence REAL
+            )
+        ''')
         
         # Migration: Add columns if they don't exist (for existing databases)
         cursor.execute("PRAGMA table_info(evaluation_isotopes)")
@@ -372,5 +384,56 @@ class DatabaseManager:
             """)
             rows = cursor.fetchall()
             return [{'csd_timestamp': row[0], 'eval_count': row[1]} for row in rows]
+        finally:
+            conn.close()
+
+    def get_peak_parameters(self, username):
+        """
+        Returns a dict of peak parameters for a specific user.
+        Returns None if no custom parameters are set.
+        """
+        conn = sqlite3.connect(self.db_path)
+        conn.row_factory = sqlite3.Row
+        cursor = conn.cursor()
+        try:
+            cursor.execute("SELECT * FROM user_peak_parameters WHERE username = ?", (username,))
+            row = cursor.fetchone()
+            if row:
+                return dict(row)
+            return None
+        finally:
+            conn.close()
+
+    def save_peak_parameters(self, username, params):
+        """
+        Saves peak parameters for a specific user.
+        params: dict matching table columns (min_height, max_height, etc.)
+        """
+        conn = sqlite3.connect(self.db_path)
+        cursor = conn.cursor()
+        try:
+            cursor.execute("""
+                INSERT INTO user_peak_parameters (
+                    username, min_height, max_height, threshold, distance, prominence
+                ) VALUES (?, ?, ?, ?, ?, ?)
+                ON CONFLICT(username) DO UPDATE SET
+                    min_height=excluded.min_height,
+                    max_height=excluded.max_height,
+                    threshold=excluded.threshold,
+                    distance=excluded.distance,
+                    prominence=excluded.prominence
+            """, (
+                username, 
+                params.get('min_height'), 
+                params.get('max_height'), 
+                params.get('threshold'), 
+                params.get('distance'), 
+                params.get('prominence')
+            ))
+            conn.commit()
+            return True
+        except sqlite3.Error as e:
+            print(f"Database error saving peak parameters: {e}")
+            return False
         finally:
             conn.close()
