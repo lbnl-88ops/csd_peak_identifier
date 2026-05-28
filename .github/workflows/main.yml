@@ -21,12 +21,20 @@ jobs:
         run: |
           pip install poetry
           poetry install --with windows-build
-      - name: Setup NSIS
-        uses: actions/setup-nsis@v1
+      - name: Install NSIS
+        run: choco install nsis --yes
       - name: Build executable
         run: poetry run pyinstaller --noconsole --name peak_identifier --onedir --icon icon.ico --add-data "icon.png;." --add-data "data;data" app.py
       - name: Build installer
-        run: makensis installer.nsi
+        run: |
+          # NSIS is usually in C:\Program Files (x86)\NSIS\
+          $nsisPath = "C:\Program Files (x86)\NSIS\makensis.exe"
+          if (Test-Path $nsisPath) {
+            & $nsisPath installer.nsi
+          } else {
+            # Fallback to path if choco added it correctly
+            makensis installer.nsi
+          }
       - name: Create Release
         id: create_release
         uses: softprops/action-gh-release@v2
