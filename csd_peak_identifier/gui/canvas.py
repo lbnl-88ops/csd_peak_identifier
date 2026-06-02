@@ -201,9 +201,15 @@ class MqPlotCanvas(FigureCanvas):
                 return
             self.on_mq_clicked(event.xdata, event.ydata)
 
-    def redraw(self, csd, identified, candidate=None, target=None, title=None):
+    def redraw(self, csd, identified, candidate=None, target=None, title=None, use_log_y=False):
         self._updating_view = True
         try:
+            # Set scale
+            if use_log_y:
+                self.axes.set_yscale('log', nonpositive='clip')
+            else:
+                self.axes.set_yscale('linear')
+
             # Remove artists instead of clearing axes to preserve callbacks and configuration
             # This is critical for keeping our xlim_changed/ylim_changed connections alive
             for artist in (list(self.axes.lines) + list(self.axes.collections) + 

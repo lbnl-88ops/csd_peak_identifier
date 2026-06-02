@@ -217,12 +217,14 @@ class Coordinator(QObject):
 
         if self._plot:
             title = self.csd_file.formatted_datetime if self.csd_file else None
+            use_log_y = self._main_window.log_y_cb.isChecked()
             self._plot.redraw(
                 self.csd,
                 self.identified + self.maybe,
                 highlight_ev,
                 target_ev,
                 title=title,
+                use_log_y=use_log_y,
             )
 
         if rebuild:

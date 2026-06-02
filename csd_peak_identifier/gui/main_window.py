@@ -2,7 +2,7 @@ import numpy as np
 import webbrowser
 from PySide6.QtWidgets import (
     QMainWindow, QWidget, QVBoxLayout, QHBoxLayout, 
-    QStatusBar, QMessageBox, QLabel, QPushButton
+    QStatusBar, QMessageBox, QLabel, QPushButton, QCheckBox
 )
 from PySide6.QtCore import Qt, QSettings, QThread, Signal
 from PySide6.QtGui import QAction
@@ -186,10 +186,15 @@ class CsdPeakIdentifierApp(QMainWindow):
         )
         self.reset_btn.clicked.connect(self.reset_plot_view)
         
+        self.log_y_cb = QCheckBox("LOG Y")
+        self.log_y_cb.setStyleSheet(f"font-family: {FONT_SANS}; font-size: 10px; font-weight: bold; color: {COLOR_MUTED}; margin-left: 10px;")
+        self.log_y_cb.toggled.connect(self.update_plot_scale)
+        
         plot_ctrl_layout.addStretch()
         plot_ctrl_layout.addWidget(self.pan_btn)
         plot_ctrl_layout.addWidget(self.zoom_btn)
         plot_ctrl_layout.addWidget(self.reset_btn)
+        plot_ctrl_layout.addWidget(self.log_y_cb)
         plot_ctrl_layout.addStretch()
         center_layout.addLayout(plot_ctrl_layout)
 
@@ -253,6 +258,10 @@ class CsdPeakIdentifierApp(QMainWindow):
         if self.zoom_btn.isChecked():
             self.zoom_btn.setChecked(False)
             self.toggle_zoom_mode()
+
+    def update_plot_scale(self):
+        if self.coordinator:
+            self.coordinator.update_view()
 
     def reset_plot_view(self):
         self.canvas.reset_view()
