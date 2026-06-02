@@ -13,7 +13,7 @@ from csd_peak_identifier.gui.main_window import CsdPeakIdentifierApp
 
 from csd_peak_identifier.gui.welcome_dialog import WelcomeDialog
 from csd_peak_identifier.coordinator import Coordinator
-from csd_peak_identifier.gui.constants import DEFAULT_CSD, get_resource_path
+from csd_peak_identifier.gui.constants import DEFAULT_CSD, get_resource_path, VERSION
 from csd_peak_identifier.utils.database import DatabaseManager
 
 def main():
@@ -57,7 +57,7 @@ def main():
     welcome_dlg = WelcomeDialog(db, users, last_username=last_user, parent=window)
     
     # Connect update checker result to the welcome dialog if it's still open
-    def on_update_result(latest_version, release_url, quiet):
+    def on_update_result(latest_version, release_url):
         if latest_version:
             welcome_dlg.set_update_status(f"CRITICAL SYSTEM UPDATE AVAILABLE: v{latest_version}", is_alert=True)
         else:
