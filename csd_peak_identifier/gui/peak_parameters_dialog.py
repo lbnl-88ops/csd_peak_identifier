@@ -14,6 +14,7 @@ from csd_peak_identifier.gui.constants import (
     COLOR_BG,
     COLOR_TEXT,
     COLOR_GRID,
+    COLOR_ACTION,
     FONT_SANS,
     FONT_MONO,
     get_resource_path,
@@ -99,22 +100,49 @@ class PeakParametersDialog(QDialog):
         self.prominence.setValidator(validator)
         self.prominence.setPlaceholderText("None")
         self.prominence.setStyleSheet(edit_style)
-
+ 
         label_style = f"font-family: {FONT_SANS}; font-weight: bold; font-size: 11px;"
-
-        def add_param_row(label_text, widget):
+ 
+        def add_param_row(layout_target, label_text, widget):
             lbl = QLabel(label_text)
             lbl.setStyleSheet(label_style)
-            form_layout.addRow(lbl, widget)
-
-        add_param_row("MIN HEIGHT (μA):", self.min_height)
-        add_param_row("MAX HEIGHT (μA):", self.max_height)
-        add_param_row("THRESHOLD (μA):", self.threshold)
-        add_param_row("DISTANCE (m/q):", self.distance)
-        add_param_row("PROMINENCE (μA):", self.prominence)
-
+            layout_target.addRow(lbl, widget)
+ 
+        add_param_row(form_layout, "MIN HEIGHT (μA):", self.min_height)
+        add_param_row(form_layout, "MAX HEIGHT (μA):", self.max_height)
+        add_param_row(form_layout, "THRESHOLD (μA):", self.threshold)
+        add_param_row(form_layout, "DISTANCE (m/q):", self.distance)
+        add_param_row(form_layout, "PROMINENCE (μA):", self.prominence)
+ 
         layout.addLayout(form_layout)
+ 
+        # Candidate Evaluation Section
+        cand_header = QLabel("CANDIDATE EVALUATION")
+        cand_header.setStyleSheet(
+            f"font-family: {FONT_SANS}; font-weight: bold; font-size: 13px; color: {COLOR_ACTION}; margin-top: 10px;"
+        )
+        cand_header.setAlignment(Qt.AlignCenter)
+        layout.addWidget(cand_header)
+ 
+        cand_form = QFormLayout()
+        cand_form.setLabelAlignment(Qt.AlignRight)
+        cand_form.setSpacing(10)
+        
+        self.mq_tolerance = QLineEdit(str(current_params.mq_tolerance))
+        self.mq_tolerance.setValidator(validator)
+        self.mq_tolerance.setStyleSheet(edit_style)
+        
+        add_param_row(cand_form, "M/Q TOLERANCE (m/q):", self.mq_tolerance)
+        
+        layout.addLayout(cand_form)
 
+        cand_info = QLabel("Affects how peaks are assigned to elements. This tolerance is the maximum difference between the calculated isotope M/Q and the peak M/Q.")
+        cand_info.setWordWrap(True)
+        cand_info.setStyleSheet(f"font-family: {FONT_SANS}; font-size: 9px; color: #666666; font-style: italic; margin-left: 20px; margin-right: 20px;")
+        layout.addWidget(cand_info)
+ 
+        layout.addStretch() # Ensure alignment
+ 
         info_label = QLabel("(Leave empty for 'None' / Auto-calculate)")
         info_label.setStyleSheet(
             f"font-family: {FONT_SANS}; font-size: 9px; color: #666666;"
@@ -160,4 +188,5 @@ class PeakParametersDialog(QDialog):
             prominance=parse_float(
                 self.prominence
             ),  # Note: logic.py spelling is 'prominance'
+            mq_tolerance=parse_float(self.mq_tolerance) or 0.03,
         )

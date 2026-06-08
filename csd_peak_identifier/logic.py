@@ -18,6 +18,7 @@ class PeakParameters:
     threshold: Optional[float] = None
     distance: Optional[float] = None
     prominance: Optional[float] = None
+    mq_tolerance: float = 0.03
 
 
 @dataclass
@@ -109,11 +110,14 @@ def find_element_peaks(
     return np.sort(np.array(best_peaks, dtype=int))
 
 
-def create_evaluation(isotope: Any, csd: Any, peaks: np.ndarray) -> ElementEvaluation:
+def create_evaluation(
+    isotope: Any, csd: Any, peaks: np.ndarray, peak_parameters: Optional[PeakParameters] = None
+) -> ElementEvaluation:
     """Create an ElementEvaluation for a given isotope based on detected peaks."""
     mass = float(cast(Any, isotope["m"]))
     z = int(isotope["z"])
-    found_peaks = find_element_peaks(peaks, csd, mass, z)
+    mq_tolerance = peak_parameters.mq_tolerance if peak_parameters else 0.03
+    found_peaks = find_element_peaks(peaks, csd, mass, z, mq_tolerance=mq_tolerance)
 
     m_over_q_found = (
         csd.m_over_q[found_peaks] if csd.m_over_q is not None else np.array([])

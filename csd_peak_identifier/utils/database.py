@@ -82,11 +82,17 @@ class DatabaseManager:
                 max_height REAL,
                 threshold REAL,
                 distance REAL,
-                prominence REAL
+                prominence REAL,
+                mq_tolerance REAL
             )
         ''')
         
         # Migration: Add columns if they don't exist (for existing databases)
+        cursor.execute("PRAGMA table_info(user_peak_parameters)")
+        columns = [column[1] for column in cursor.fetchall()]
+        if "mq_tolerance" not in columns:
+            cursor.execute("ALTER TABLE user_peak_parameters ADD COLUMN mq_tolerance REAL")
+ 
         cursor.execute("PRAGMA table_info(evaluation_isotopes)")
         columns = [column[1] for column in cursor.fetchall()]
         if "s" not in columns:
@@ -414,21 +420,23 @@ class DatabaseManager:
         try:
             cursor.execute("""
                 INSERT INTO user_peak_parameters (
-                    username, min_height, max_height, threshold, distance, prominence
-                ) VALUES (?, ?, ?, ?, ?, ?)
+                    username, min_height, max_height, threshold, distance, prominence, mq_tolerance
+                ) VALUES (?, ?, ?, ?, ?, ?, ?)
                 ON CONFLICT(username) DO UPDATE SET
                     min_height=excluded.min_height,
                     max_height=excluded.max_height,
                     threshold=excluded.threshold,
                     distance=excluded.distance,
-                    prominence=excluded.prominence
+                    prominence=excluded.prominence,
+                    mq_tolerance=excluded.mq_tolerance
             """, (
                 username, 
                 params.get('min_height'), 
                 params.get('max_height'), 
                 params.get('threshold'), 
                 params.get('distance'), 
-                params.get('prominence')
+                params.get('prominence'),
+                params.get('mq_tolerance')
             ))
             conn.commit()
             return True

@@ -131,7 +131,9 @@ class Coordinator(QObject):
 
             # If multiple isotopes found (like for just "Ar"), take the most abundant stable one
             best_iso = matches.iloc[matches["a"].argmax()]
-            ev = create_evaluation(best_iso, self.csd, self.peaks)
+            ev = create_evaluation(
+                best_iso, self.csd, self.peaks, peak_parameters=self.peak_parameters
+            )
 
             # Check if already identified
             if any(i.symbol() == ev.symbol() for i in self.identified):
@@ -164,7 +166,10 @@ class Coordinator(QObject):
             matches = lookup_isotopes(s, self.isotopes)
             if not matches.empty:
                 ev = create_evaluation(
-                    matches.iloc[matches["a"].argmax()], self.csd, self.peaks
+                    matches.iloc[matches["a"].argmax()],
+                    self.csd,
+                    self.peaks,
+                    peak_parameters=self.peak_parameters,
                 )
                 if len(ev.peak_indices) > 0:
                     self.identified.append(ev)
@@ -425,7 +430,9 @@ class Coordinator(QObject):
             for _, iso in matches.iterrows():
                 if q > int(iso["z"]):
                     continue
-                ev = create_evaluation(iso, self.csd, self.peaks)
+                ev = create_evaluation(
+                    iso, self.csd, self.peaks, peak_parameters=self.peak_parameters
+                )
                 if p_idx in ev.peak_indices and not any(
                     c.symbol() == ev.symbol() for c in self.candidates
                 ):
@@ -653,7 +660,8 @@ class Coordinator(QObject):
                     'max_height': self.peak_parameters.max_height,
                     'threshold': self.peak_parameters.threshold,
                     'distance': self.peak_parameters.distance,
-                    'prominence': self.peak_parameters.prominance
+                    'prominence': self.peak_parameters.prominance,
+                    'mq_tolerance': self.peak_parameters.mq_tolerance
                 })
                 
                 # Ask to reload
@@ -677,7 +685,8 @@ class Coordinator(QObject):
                 max_height=params_row.get('max_height'),
                 threshold=params_row.get('threshold'),
                 distance=params_row.get('distance'),
-                prominance=params_row.get('prominence')
+                prominance=params_row.get('prominence'),
+                mq_tolerance=params_row.get('mq_tolerance', 0.03)
             )
         else:
             self.peak_parameters = PeakParameters() # Default
