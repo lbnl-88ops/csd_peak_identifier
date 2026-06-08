@@ -201,9 +201,18 @@ class MqPlotCanvas(FigureCanvas):
                 return
             self.on_mq_clicked(event.xdata, event.ydata)
 
-    def redraw(self, csd, identified, candidate=None, target=None, title=None, use_log_y=False):
+    def redraw(self, csd, identified, candidate=None, target=None, title=None, use_log_y=False, q_min=1, q_max=100, ref_mass=0.0):
         self._updating_view = True
         try:
+            # Adjust top margin based on how many rulers we are showing
+            top_margin = 0.95
+            if candidate and ref_mass > 0:
+                top_margin = 0.80 # Most room needed for two rulers
+            elif candidate or ref_mass > 0:
+                top_margin = 0.88 # Normal room for one ruler
+            
+            self.figure.subplots_adjust(top=top_margin)
+
             # Set scale
             if use_log_y:
                 self.axes.set_yscale('log', nonpositive='clip')
@@ -218,13 +227,15 @@ class MqPlotCanvas(FigureCanvas):
             if self.axes.get_legend() is not None:
                 self.axes.get_legend().remove()
             
-            # Remove previous secondary axis if it exists
-            if self._secax:
-                try:
-                    self._secax.remove()
-                except Exception:
-                    pass
-                self._secax = None
+            # Remove previous secondary axes if they exist
+            for attr in ['_secax', '_secax_ref']:
+                ax = getattr(self, attr, None)
+                if ax:
+                    try:
+                        ax.remove()
+                    except Exception:
+                        pass
+                    setattr(self, attr, None)
                 
             # Temporarily enable autoscale so the new data can define the base bounds
             self.axes.set_autoscalex_on(True)
@@ -325,13 +336,20 @@ class MqPlotCanvas(FigureCanvas):
                 if candidate or target:
                     self.axes.set_ylim(y_min, y_max + 0.15 * y_range)
 
-            # NOW plot the q-state ruler as a secondary axis
-            if candidate:
+            # NOW plot the q-state rulers
+            if candidate or ref_mass > 0:
                 from matplotlib.patches import Rectangle
-                # Add a white background rectangle for the "ruler" area
-                # Height reduced to 0.07 for a sleeker profile
+                
+                # Determine how many rulers and total height
+                num_rulers = 0
+                if candidate: num_rulers += 1
+                if ref_mass > 0: num_rulers += 1
+                
+                ruler_height = 0.08 * num_rulers
+                
+                # Add background for the ruler area
                 ruler_bg = Rectangle(
-                    (0, 1.0), 1, 0.07, 
+                    (0, 1.0), 1, ruler_height, 
                     transform=self.axes.transAxes,
                     facecolor="white", 
                     edgecolor=COLOR_GRID, 
@@ -340,32 +358,55 @@ class MqPlotCanvas(FigureCanvas):
                     zorder=10
                 )
                 self.axes.add_patch(ruler_bg)
-
-                # Create a secondary x-axis pinned to the top
-                self._secax = self.axes.secondary_xaxis('top', functions=(lambda x: x, lambda x: x))
                 
-                q_mq_values = []
-                q_labels = []
-                for q in range(1, candidate.z + 1):
-                    mq_exp = candidate.m / q
-                    q_mq_values.append(mq_exp)
-                    q_labels.append(str(q))
+                vis_x_min, vis_x_max = self.axes.get_xlim()
+
+                # --- RULER 1: Candidate Mass ---
+                if candidate:
+                    # If we have two rulers, the candidate one goes at the bottom (closer to plot)
+                    self._secax = self.axes.secondary_xaxis('top', functions=(lambda x: x, lambda x: x))
                     
-                    # Also keep the vertical guide lines
-                    vis_x_min, vis_x_max = self.axes.get_xlim()
-                    if mq_exp >= vis_x_min and mq_exp <= vis_x_max:
-                        self.axes.axvline(
-                            mq_exp, ls="--", color=COLOR_CANDIDATE, alpha=0.3, lw=0.8
-                        )
+                    actual_q_min = max(1, q_min)
+                    actual_q_max = min(candidate.z, q_max)
+                    
+                    q_mq_values = []
+                    q_labels = []
+                    for q in range(actual_q_min, actual_q_max + 1):
+                        mq_exp = candidate.m / q
+                        q_mq_values.append(mq_exp)
+                        q_labels.append(str(q))
+                        if mq_exp >= vis_x_min and mq_exp <= vis_x_max:
+                            self.axes.axvline(mq_exp, ls="--", color=COLOR_CANDIDATE, alpha=0.3, lw=0.8)
 
-                self._secax.set_xticks(q_mq_values)
-                self._secax.set_xticklabels(q_labels, rotation=90, fontsize=8, fontweight='bold', fontfamily='monospace')
-                self._secax.set_xlabel("q", fontsize=8, fontweight='bold', color='#666666', labelpad=2)
-                
-                # Style the secondary axis to look like a clean ruler
-                self._secax.spines['top'].set_visible(False) 
-                self._secax.tick_params(axis='x', colors=COLOR_TEXT, direction='in', length=3, zorder=11)
-                self._secax.zorder = 11
+                    self._secax.set_xticks(q_mq_values)
+                    self._secax.set_xticklabels(q_labels, rotation=90, fontsize=8, fontweight='bold', fontfamily='monospace')
+                    self._secax.set_xlabel(f"q ({candidate.symbol()})", fontsize=7, fontweight='bold', color=COLOR_CANDIDATE, labelpad=0)
+                    self._secax.spines['top'].set_visible(False) 
+                    self._secax.tick_params(axis='x', colors=COLOR_CANDIDATE, direction='in', length=3, zorder=11)
+                    self._secax.zorder = 11
+
+                # --- RULER 2: Reference Mass ---
+                if ref_mass > 0:
+                    # Offset the secondary axis if the candidate ruler is already there
+                    offset = 1.0 + (0.08 if candidate else 0.0)
+                    self._secax_ref = self.axes.secondary_xaxis(offset, functions=(lambda x: x, lambda x: x))
+                    
+                    q_mq_values = []
+                    q_labels = []
+                    # For a reference mass, we use the user-provided q range
+                    for q in range(q_min, q_max + 1):
+                        mq_exp = ref_mass / q
+                        q_mq_values.append(mq_exp)
+                        q_labels.append(str(q))
+                        if mq_exp >= vis_x_min and mq_exp <= vis_x_max:
+                            self.axes.axvline(mq_exp, ls=":", color=COLOR_ACTION, alpha=0.3, lw=0.8)
+
+                    self._secax_ref.set_xticks(q_mq_values)
+                    self._secax_ref.set_xticklabels(q_labels, rotation=90, fontsize=8, fontweight='bold', fontfamily='monospace')
+                    self._secax_ref.set_xlabel(f"q (Ref: {ref_mass:.3f} u)", fontsize=7, fontweight='bold', color=COLOR_ACTION, labelpad=0)
+                    self._secax_ref.spines['top'].set_visible(False) 
+                    self._secax_ref.tick_params(axis='x', colors=COLOR_ACTION, direction='in', length=3, zorder=11)
+                    self._secax_ref.zorder = 11
 
             self.axes.legend(loc="upper right", fontsize="small")
             self.axes.grid(color=COLOR_GRID, ls="--", alpha=0.5)

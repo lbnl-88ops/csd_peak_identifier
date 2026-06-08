@@ -223,6 +223,9 @@ class Coordinator(QObject):
         if self._plot:
             title = self.csd_file.formatted_datetime if self.csd_file else None
             use_log_y = self._main_window.log_y_cb.isChecked()
+            q_min = self._main_window.q_min_sb.value()
+            q_max = self._main_window.q_max_sb.value()
+            ref_mass = self._main_window.ref_mass_sb.value()
             self._plot.redraw(
                 self.csd,
                 self.identified + self.maybe,
@@ -230,6 +233,9 @@ class Coordinator(QObject):
                 target_ev,
                 title=title,
                 use_log_y=use_log_y,
+                q_min=q_min,
+                q_max=q_max,
+                ref_mass=ref_mass
             )
 
         if rebuild:

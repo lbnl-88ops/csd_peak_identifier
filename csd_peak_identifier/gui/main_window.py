@@ -2,7 +2,7 @@ import numpy as np
 import webbrowser
 from PySide6.QtWidgets import (
     QMainWindow, QWidget, QVBoxLayout, QHBoxLayout, 
-    QStatusBar, QMessageBox, QLabel, QPushButton, QCheckBox
+    QStatusBar, QMessageBox, QLabel, QPushButton, QCheckBox, QSpinBox, QDoubleSpinBox
 )
 from PySide6.QtCore import Qt, QSettings, QThread, Signal
 from PySide6.QtGui import QAction
@@ -190,11 +190,38 @@ class CsdPeakIdentifierApp(QMainWindow):
         self.log_y_cb.setStyleSheet(f"font-family: {FONT_SANS}; font-size: 10px; font-weight: bold; color: {COLOR_MUTED}; margin-left: 10px;")
         self.log_y_cb.toggled.connect(self.update_plot_scale)
         
+        # Ruler Options
+        self.q_min_sb = QSpinBox()
+        self.q_min_sb.setRange(1, 100)
+        self.q_min_sb.setValue(1)
+        self.q_min_sb.setPrefix("q min: ")
+        self.q_min_sb.setStyleSheet(f"font-family: {FONT_SANS}; font-size: 10px; font-weight: bold; color: {COLOR_TEXT};")
+        self.q_min_sb.valueChanged.connect(self.update_plot_scale)
+        
+        self.q_max_sb = QSpinBox()
+        self.q_max_sb.setRange(1, 100)
+        self.q_max_sb.setValue(50)
+        self.q_max_sb.setPrefix("q max: ")
+        self.q_max_sb.setStyleSheet(f"font-family: {FONT_SANS}; font-size: 10px; font-weight: bold; color: {COLOR_TEXT};")
+        self.q_max_sb.valueChanged.connect(self.update_plot_scale)
+        
+        self.ref_mass_sb = QDoubleSpinBox()
+        self.ref_mass_sb.setRange(0, 500)
+        self.ref_mass_sb.setDecimals(3)
+        self.ref_mass_sb.setValue(0.0)
+        self.ref_mass_sb.setPrefix("REF MASS: ")
+        self.ref_mass_sb.setSuffix(" u")
+        self.ref_mass_sb.setStyleSheet(f"font-family: {FONT_SANS}; font-size: 10px; font-weight: bold; color: {COLOR_ACTION};")
+        self.ref_mass_sb.valueChanged.connect(self.update_plot_scale)
+        
         plot_ctrl_layout.addStretch()
         plot_ctrl_layout.addWidget(self.pan_btn)
         plot_ctrl_layout.addWidget(self.zoom_btn)
         plot_ctrl_layout.addWidget(self.reset_btn)
         plot_ctrl_layout.addWidget(self.log_y_cb)
+        plot_ctrl_layout.addWidget(self.q_min_sb)
+        plot_ctrl_layout.addWidget(self.q_max_sb)
+        plot_ctrl_layout.addWidget(self.ref_mass_sb)
         plot_ctrl_layout.addStretch()
         center_layout.addLayout(plot_ctrl_layout)
 

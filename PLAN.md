@@ -100,3 +100,9 @@
 - [x] Prompt user to reload/re-calibrate CSD when parameters are modified
 - [x] Integrate custom parameters into the `load_and_calibrate_csd` logic
 - [x] Add visual guide image (`peak_description.png`) to the configuration dialog
+
+## Phase 14: Ruler Enhancements and Polish (COMPLETED)
+- [x] Implement q-range filtering (min/max) for the Charge State Ruler
+- [x] Add second ruler option for custom mass reference
+- [x] Ensure rulers are stacked and color-coded when both are active
+- [x] Automatically adjust plot margins to accommodate multiple rulers
